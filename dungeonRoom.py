@@ -4,10 +4,10 @@ import random
 from PIL import Image, ImageDraw, ImageTk
 
 class Room:
-    def __init__(self, size=5):
+    def __init__(self, maxSize=10):
         random.seed()
-        self.length = random.randint(3,size)
-        self.height = random.randint(3,size)
+        self.length = random.randint(5,maxSize-1) #-1 because of how I calculate the points of the rectangles (x + length) with x of 0 and size of 5, shape would go 0-5, size 6
+        self.height = random.randint(5,maxSize-1)
         self.x = None #no coordinates initially
         self.y = None
     def UpdateVertices(self, coords:list): #sets a rooms x,y coords
@@ -57,29 +57,23 @@ def TrimImage(dimensions, map):
 
 def DrawPicture(map:Map, ppi):
     dimensions = [map.size, 0, map.size, 0] #0=miny 1=maxy 2=minx 3=maxx
-    TrimImage(dimensions, map)
-    #print(map.size)
-    #print(dimensions)
-    image = Image.new("RGB", ((dimensions[3]-dimensions[2])*ppi+ppi, (dimensions[1]-dimensions[0])*ppi+ppi))
+    TrimImage(dimensions, map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
+    biggerDim = dimensions[3]-dimensions[2] if dimensions[3]-dimensions[2] > dimensions[1]-dimensions[0] else dimensions[1]-dimensions[0] #get the bigger dimension so that the image is always square
+    image = Image.new("RGB", (biggerDim*ppi+ppi, biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
     #for each cell, draw 10x10 pixels
     for y in range(dimensions[0], dimensions[1]+1):
         for x in range(dimensions[2], dimensions[3]+1):
             if map.grid[y][x].status == 1:
-               # print([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi])
-                #print('floor: ',y,' ', x)
                 draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "brown")
             elif map.grid[y][x].status > 1:
-                #print('wall: ', y,' ', x)
                 draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "grey")
-                #print([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi])
-    #image.show()
     image = image.resize((750,750), Image.ANTIALIAS)
     return image
 
-def GenRooms(rooms, numRooms):
+def GenRooms(rooms, numRooms, maxRoomSize=10):
     for x in range(numRooms): #generate list of rooms with random sizes
-        rooms.append(Room(10))
+        rooms.append(Room(maxRoomSize))
     
 def GetMaxDimension(rooms):
     totalLength=0
@@ -87,7 +81,7 @@ def GetMaxDimension(rooms):
     for room in rooms: #get combined height and height of all rooms
         totalLength += room.length
         totalHeight += room.height
-    return totalLength if totalLength > totalHeight else totalHeight
+    return totalLength if totalLength > totalHeight else totalHeight #Returns bigger so that the map will always be big enough to hold all the rooms, even in worst case of side by side placement
 
 def PlaceRooms(rooms, placedRooms, map):
     coord = [map.size // 2, map.size // 2]
@@ -113,20 +107,20 @@ def PlaceRooms(rooms, placedRooms, map):
                 coord[1] -= move[1]
             room.UpdateVertices(coord) #update with new coords, try again
 
-        placedRooms.append(room)
-        for x in range(room.x, room.x+room.length+1):
+        placedRooms.append(room) #add room to list for later collision checks
+        for x in range(room.x, room.x+room.length+1): #for each tile in the room, update the maps grid
             for y in range(room.y, room.y+room.height+1):
                     if x == room.x or y == room.y or x == room.x+room.length or y == room.y+room.height:
                         map.grid[y][x].status += 2 #make walls 2
                     else:
                         map.grid[y][x].status = 1 #make cells occupied
 
-def GenerateMap(numRooms, ppi):
+def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
     random.seed()
     rooms = [] #initial roomlist
     placedRooms = [] #rooms already placed in map, this is used for collision checking
 
-    GenRooms(rooms, numRooms)
+    GenRooms(rooms, numRooms, maxRoomSize)
 
     maxDimension = GetMaxDimension(rooms)
 
@@ -144,8 +138,8 @@ def GenerateMap(numRooms, ppi):
     image = ImageTk.PhotoImage(image)
     return image
 
-def ButtonCallback(numRooms, imgLabel, imgFrame, ppi):
-    image = GenerateMap(numRooms, ppi)
+def ButtonCallback(numRooms, imgLabel, imgFrame, ppi, maxRoomSize):
+    image = GenerateMap(numRooms, ppi, maxRoomSize)
     imgLabel.configure(image=image)
     imgLabel.image = image
 
