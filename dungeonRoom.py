@@ -3,6 +3,10 @@ from operator import truediv
 import random
 from PIL import Image, ImageDraw, ImageTk
 
+class ImageContainer:
+    img:Image = None
+    imgtk:ImageTk = None
+
 class Room:
     def __init__(self, maxSize=10):
         random.seed()
@@ -36,11 +40,19 @@ def CheckCollision(room, rooms, map): #true if collision, false if valid
 class Square:
     def __init__(self):
         self.status:int = 0
+        self.adjFloors:int = 0
 
 class Map:
-    def __init__(self, size:int):
+    ppi = 10
+    numrooms = 10
+    roomsize = 10
+    def __init__(self, size:int, **params):
         self.size = size
         self.grid = [[Square() for x in range(size)] for y in range(size)]
+        self.rooms = []
+        Map.ppi = params.get('ppi', Map.ppi)
+        Map.numrooms = params.get('numrooms', Map.numrooms)
+        Map.roomsize = params.get('roomsize', Map.roomsize)
 
 def TrimImage(dimensions, map):
     dimensions[0]=map.size
@@ -55,7 +67,8 @@ def TrimImage(dimensions, map):
                 dimensions[2] = indexx if indexx < dimensions[2] else dimensions[2]
                 dimensions[3] = indexx if indexx > dimensions[3] else dimensions[3]
 
-def DrawPicture(map:Map, ppi):
+def DrawPicture(map:Map):
+    ppi = Map.ppi
     dimensions = [map.size, 0, map.size, 0] #0=miny 1=maxy 2=minx 3=maxx
     TrimImage(dimensions, map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     biggerDim = dimensions[3]-dimensions[2] if dimensions[3]-dimensions[2] > dimensions[1]-dimensions[0] else dimensions[1]-dimensions[0] #get the bigger dimension so that the image is always square
@@ -65,10 +78,11 @@ def DrawPicture(map:Map, ppi):
     for y in range(dimensions[0], dimensions[1]+1):
         for x in range(dimensions[2], dimensions[3]+1):
             if map.grid[y][x].status == 1:
-                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "brown")
+                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (51, 23, 12))
+            elif map.grid[y][x].status == 3:
+                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (146, 41, 41))
             elif map.grid[y][x].status > 1:
-                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "grey")
-    #image = image.resize((750,750), Image.ANTIALIAS)
+                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (93, 89, 97))
     return image
 
 def GenRooms(rooms, numRooms, maxRoomSize=10):
@@ -115,14 +129,12 @@ def PlaceRooms(rooms, placedRooms, map):
                     else:
                         map.grid[y][x].status = 1 #make cells occupied
 
-def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
-    global map
-    global newImage
+def GenerateMap():
     random.seed()
     rooms = [] #initial roomlist
     placedRooms = [] #rooms already placed in map, this is used for collision checking
 
-    GenRooms(rooms, numRooms, maxRoomSize)
+    GenRooms(rooms, Map.numrooms, Map.roomsize)
 
     maxDimension = GetMaxDimension(rooms)
 
@@ -130,36 +142,63 @@ def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
 
 #place rooms on the map, random walk from center
     PlaceRooms(rooms, placedRooms, map)
+    GenDoors(map)
     #for y in map.grid:
     #    for x in y:
     #        print(x.status, end='')
     #    print('')
     #for room in placedRooms:
     #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
-    newImage = DrawPicture(map, ppi)
+    newImage = DrawPicture(map)
     #image = ImageTk.PhotoImage(image)
-    return newImage
+    return map, newImage
 
-def ButtonCallback(numRooms, canvas, ppi, maxRoomSize, canvasImage):
-    global newImage
-    global sizeScale
-    newImage = GenerateMap(numRooms, ppi, maxRoomSize)
-    #image = image.resize((750,750), Image.ANTIALIAS)
-    global imgtk 
-    imgtk = ImageTk.PhotoImage(newImage.resize((750,750), Image.ANTIALIAS))
-    canvas.itemconfig(canvasImage, image = imgtk)
-    print(newImage.size)
+def ButtonCallback(numRooms, canvas, maxRoomSize, canvasImage):
+    Map.numrooms = numRooms
+    Map.roomsize = maxRoomSize
+    map, ImageContainer.img = GenerateMap()
+    ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS))
+    canvas.itemconfig(canvasImage, image = ImageContainer.imgtk)
 
-def ScaleCallback(numRooms, label):
-    pass
+def canvasOnClick(event, canvas):
+    scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
+    imgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
+    cell = (imgCoords[0]//Map.ppi, imgCoords[1]//Map.ppi) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
 
-def canvasOnClick(event, ppi, canvasImage, canvas):
-    global newImage
-    global newDisplay
-    draw = ImageDraw.Draw(newImage)
-    scale = newImage.width / 750 #gets the multiplier used to convert to and from original image size
-    imgCoords = (event.x*scale, event.y*scale)
-    cell = (imgCoords[0]//ppi, imgCoords[1]//ppi)
-    draw.rectangle((cell[0]*ppi, cell[1]*ppi, cell[0]*ppi+ppi, cell[1]*ppi+ppi),outline="black", fill = "green")
-    newDisplay = ImageTk.PhotoImage(newImage.resize((750,750), Image.ANTIALIAS))
-    canvas.itemconfig(canvasImage, image = newDisplay)
+    DrawOnCanvas(cell)
+    ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
+    canvas.itemconfig('image', image = ImageContainer.imgtk)
+
+def DrawOnCanvas(cell):
+    draw = ImageDraw.Draw(ImageContainer.img)
+    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = "green")
+
+def GenDoors(map):
+    dim = [map.size, 0, map.size, 0]
+    doorable = []
+    doorGroups = []
+    TrimImage(dim, map)
+    for y in range(dim[0], dim[1]+1):
+        for x in range(dim[2], dim[3]+1):
+            if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+                continue
+            #Generate lists of horizontally adjacent doorable tiles
+            if map.grid[y+1][x].status==1 and map.grid[y-1][x].status ==1: #if doorable
+                doorGroups.append(map.grid[y][x])
+            elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
+                doorable.append(doorGroups)
+                doorGroups = []
+
+    for x in range(dim[2], dim[3]+1):
+        for y in range(dim[0], dim[1]+1):
+                if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+                    continue
+                if map.grid[y][x+1].status==1 and map.grid[y][x-1].status ==1: #if doorable
+                    doorGroups.append(map.grid[y][x])
+                elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
+                    doorable.append(doorGroups)
+                    doorGroups = []
+
+    for group in doorable:
+        door = random.choice(group)
+        door.status = 3
