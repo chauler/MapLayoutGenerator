@@ -18,7 +18,7 @@ def main():
 
     #default params
     numRooms = 10
-    ppi = 10
+    ppi = 40
     maxRoomSize = 10
     image = dr.GenerateMap(numRooms, ppi) #generate initial image with default params
     #image = image.resize((750, 750), Image.ANTIALIAS)
@@ -27,7 +27,7 @@ def main():
     #Build UI elements
     def BuildUI(imageFrame, imgLabel, UIFrame, ppi):
         canvas = tk.Canvas(imageFrame, width=750, height=750)
-        canvas.bind("<Button-1>", lambda event: dr.canvasOnClick(event, image))
+        canvas.bind("<Button-1>", lambda event: dr.canvasOnClick(event, ppi, canvasImage, canvas))
         scaleLabel = ttk.Label(UIFrame, text='# of Rooms: ')
         valueLabel = ttk.Label(UIFrame, text="10")
         roomSizeLabel = ttk.Label(UIFrame, text="Max Room Size:")

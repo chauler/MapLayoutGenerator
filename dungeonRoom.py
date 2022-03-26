@@ -116,6 +116,8 @@ def PlaceRooms(rooms, placedRooms, map):
                         map.grid[y][x].status = 1 #make cells occupied
 
 def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
+    global map
+    global newImage
     random.seed()
     rooms = [] #initial roomlist
     placedRooms = [] #rooms already placed in map, this is used for collision checking
@@ -134,23 +136,30 @@ def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
     #    print('')
     #for room in placedRooms:
     #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
-    image = DrawPicture(map, ppi)
+    newImage = DrawPicture(map, ppi)
     #image = ImageTk.PhotoImage(image)
-    return image
+    return newImage
 
 def ButtonCallback(numRooms, canvas, ppi, maxRoomSize, canvasImage):
-    global image
+    global newImage
     global sizeScale
-    image = GenerateMap(numRooms, ppi, maxRoomSize)
+    newImage = GenerateMap(numRooms, ppi, maxRoomSize)
     #image = image.resize((750,750), Image.ANTIALIAS)
     global imgtk 
-    imgtk = ImageTk.PhotoImage(image.resize((750,750), Image.ANTIALIAS))
+    imgtk = ImageTk.PhotoImage(newImage.resize((750,750), Image.ANTIALIAS))
     canvas.itemconfig(canvasImage, image = imgtk)
-    print(image.size)
+    print(newImage.size)
 
 def ScaleCallback(numRooms, label):
     pass
 
-def canvasOnClick(event, image):
-    scale = image.width / 750 #gets the multiplier used to convert to and from original image size
-    print(event.x, event.y, sep=' ')
+def canvasOnClick(event, ppi, canvasImage, canvas):
+    global newImage
+    global newDisplay
+    draw = ImageDraw.Draw(newImage)
+    scale = newImage.width / 750 #gets the multiplier used to convert to and from original image size
+    imgCoords = (event.x*scale, event.y*scale)
+    cell = (imgCoords[0]//ppi, imgCoords[1]//ppi)
+    draw.rectangle((cell[0]*ppi, cell[1]*ppi, cell[0]*ppi+ppi, cell[1]*ppi+ppi),outline="black", fill = "green")
+    newDisplay = ImageTk.PhotoImage(newImage.resize((750,750), Image.ANTIALIAS))
+    canvas.itemconfig(canvasImage, image = newDisplay)
