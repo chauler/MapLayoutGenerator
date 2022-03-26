@@ -6,8 +6,8 @@ from PIL import Image, ImageDraw, ImageTk
 class Room:
     def __init__(self, maxSize=10):
         random.seed()
-        self.length = random.randint(5,maxSize-1) #-1 because of how I calculate the points of the rectangles (x + length) with x of 0 and size of 5, shape would go 0-5, size 6
-        self.height = random.randint(5,maxSize-1)
+        self.length = random.randint(4,maxSize-1) #-1 because of how I calculate the points of the rectangles (x + length) with x of 0 and size of 5, shape would go 0-5, size 6
+        self.height = random.randint(4,maxSize-1)
         self.x = None #no coordinates initially
         self.y = None
     def UpdateVertices(self, coords:list): #sets a rooms x,y coords
@@ -68,7 +68,7 @@ def DrawPicture(map:Map, ppi):
                 draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "brown")
             elif map.grid[y][x].status > 1:
                 draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = "grey")
-    image = image.resize((750,750), Image.ANTIALIAS)
+    #image = image.resize((750,750), Image.ANTIALIAS)
     return image
 
 def GenRooms(rooms, numRooms, maxRoomSize=10):
@@ -135,13 +135,22 @@ def GenerateMap(numRooms, ppi=40, maxRoomSize=10):
     #for room in placedRooms:
     #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
     image = DrawPicture(map, ppi)
-    image = ImageTk.PhotoImage(image)
+    #image = ImageTk.PhotoImage(image)
     return image
 
-def ButtonCallback(numRooms, imgLabel, imgFrame, ppi, maxRoomSize):
+def ButtonCallback(numRooms, canvas, ppi, maxRoomSize, canvasImage):
+    global image
+    global sizeScale
     image = GenerateMap(numRooms, ppi, maxRoomSize)
-    imgLabel.configure(image=image)
-    imgLabel.image = image
+    #image = image.resize((750,750), Image.ANTIALIAS)
+    global imgtk 
+    imgtk = ImageTk.PhotoImage(image.resize((750,750), Image.ANTIALIAS))
+    canvas.itemconfig(canvasImage, image = imgtk)
+    print(image.size)
 
 def ScaleCallback(numRooms, label):
     pass
+
+def canvasOnClick(event, image):
+    scale = image.width / 750 #gets the multiplier used to convert to and from original image size
+    print(event.x, event.y, sep=' ')
