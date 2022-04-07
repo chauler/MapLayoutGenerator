@@ -53,36 +53,34 @@ class Map:
         Map.ppi = params.get('ppi', Map.ppi)
         Map.numrooms = params.get('numrooms', Map.numrooms)
         Map.roomsize = params.get('roomsize', Map.roomsize)
+        self.minx = self.size
+        self.maxx = 0
+        self.miny = self.size
+        self.maxy = 0
 
-def TrimImage(dimensions, map):
-    dimensions[0]=map.size
-    dimensions[1]=0
-    dimensions[2]=map.size
-    dimensions[3]=0
+def TrimImage(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
         for indexx, x in enumerate(y):
             if x.status > 1: #if cell is wall
-                dimensions[0] = indexy if indexy < dimensions[0] else dimensions[0]
-                dimensions[1] = indexy if indexy > dimensions[1] else dimensions[1]
-                dimensions[2] = indexx if indexx < dimensions[2] else dimensions[2]
-                dimensions[3] = indexx if indexx > dimensions[3] else dimensions[3]
+                map.miny = indexy if indexy < map.miny else map.miny
+                map.maxy = indexy if indexy > map.maxy else map.maxy
+                map.minx = indexx if indexx < map.minx else map.minx
+                map.maxx = indexx if indexx > map.maxx else map.maxx
 
 def DrawPicture(map:Map):
     ppi = Map.ppi
-    dimensions = [map.size, 0, map.size, 0] #0=miny 1=maxy 2=minx 3=maxx
-    TrimImage(dimensions, map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
-    biggerDim = dimensions[3]-dimensions[2] if dimensions[3]-dimensions[2] > dimensions[1]-dimensions[0] else dimensions[1]-dimensions[0] #get the bigger dimension so that the image is always square
+    biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
     image = Image.new("RGB", (biggerDim*ppi+ppi, biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
     #for each cell, draw 10x10 pixels
-    for y in range(dimensions[0], dimensions[1]+1):
-        for x in range(dimensions[2], dimensions[3]+1):
+    for y in range(map.miny, map.maxy+1):
+        for x in range(map.minx, map.maxx+1):
             if map.grid[y][x].status == 1:
-                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (51, 23, 12))
+                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (51, 23, 12))
             elif map.grid[y][x].status == 3:
-                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (146, 41, 41))
+                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (146, 41, 41))
             elif map.grid[y][x].status > 1:
-                draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (93, 89, 97))
+                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (93, 89, 97))
     return image
 
 def GenRooms(rooms):
@@ -142,6 +140,7 @@ def GenerateMap():
 
 #place rooms on the map, random walk from center
     PlaceRooms(rooms, placedRooms, map)
+    TrimImage(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     GenDoors(map)
     #for y in map.grid:
     #    for x in y:
@@ -150,7 +149,6 @@ def GenerateMap():
     #for room in placedRooms:
     #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
     newImage = DrawPicture(map)
-    #image = ImageTk.PhotoImage(image)
     return map, newImage
 
 def ButtonCallback(numRooms, canvas, maxRoomSize):
@@ -174,12 +172,10 @@ def DrawOnCanvas(cell):
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = "green")
 
 def GenDoors(map):
-    dim = [map.size, 0, map.size, 0]
     doorable = []
     doorGroups = []
-    TrimImage(dim, map)
-    for y in range(dim[0], dim[1]+1):
-        for x in range(dim[2], dim[3]+1):
+    for y in range(map.miny, map.maxy+1):
+        for x in range(map.minx, map.maxx+1):
             if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
                 continue
             #Generate lists of horizontally adjacent doorable tiles
@@ -189,8 +185,8 @@ def GenDoors(map):
                 doorable.append(doorGroups)
                 doorGroups = []
 
-    for x in range(dim[2], dim[3]+1):
-        for y in range(dim[0], dim[1]+1):
+    for x in range(map.minx, map.maxx+1):
+        for y in range(map.miny, map.maxy+1):
                 if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
                     continue
                 if map.grid[y][x+1].status==1 and map.grid[y][x-1].status ==1: #if doorable
