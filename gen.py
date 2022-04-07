@@ -25,7 +25,7 @@ class App(tk.Tk):
         self.maxRoomSizeValueLabel = ttk.Label(self.UIFrame, text="10")
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.valueLabel.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxRoomSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxRoomSizeValueLabel.configure(text='{:.0f}'.format(math.floor(self.maxRoomSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: dr.ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get()), self.canvasImage))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: dr.ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get())))
 
         self.roomNumScale.grid(row=2, column=0, sticky='n')
         self.valueLabel.grid(row=1,column=0)

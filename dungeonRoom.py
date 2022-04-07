@@ -85,9 +85,9 @@ def DrawPicture(map:Map):
                 draw.rectangle([(x-dimensions[2])*ppi,(y-dimensions[0])*ppi,((x-dimensions[2])*ppi)+ppi,((y-dimensions[0])*ppi)+ppi], outline="black", fill = (93, 89, 97))
     return image
 
-def GenRooms(rooms, numRooms, maxRoomSize=10):
-    for x in range(numRooms): #generate list of rooms with random sizes
-        rooms.append(Room(maxRoomSize))
+def GenRooms(rooms):
+    for x in range(Map.numrooms): #generate list of rooms with random sizes
+        rooms.append(Room(Map.roomsize))
     
 def GetMaxDimension(rooms):
     totalLength=0
@@ -134,7 +134,7 @@ def GenerateMap():
     rooms = [] #initial roomlist
     placedRooms = [] #rooms already placed in map, this is used for collision checking
 
-    GenRooms(rooms, Map.numrooms, Map.roomsize)
+    GenRooms(rooms)
 
     maxDimension = GetMaxDimension(rooms)
 
@@ -153,12 +153,12 @@ def GenerateMap():
     #image = ImageTk.PhotoImage(image)
     return map, newImage
 
-def ButtonCallback(numRooms, canvas, maxRoomSize, canvasImage):
+def ButtonCallback(numRooms, canvas, maxRoomSize):
     Map.numrooms = numRooms
     Map.roomsize = maxRoomSize
     map, ImageContainer.img = GenerateMap()
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS))
-    canvas.itemconfig(canvasImage, image = ImageContainer.imgtk)
+    canvas.itemconfig('image', image = ImageContainer.imgtk)
 
 def canvasOnClick(event, canvas):
     scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
