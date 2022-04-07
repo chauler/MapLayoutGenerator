@@ -1,5 +1,3 @@
-from email.mime import image
-from operator import truediv
 import random
 from PIL import Image, ImageDraw, ImageTk
 
