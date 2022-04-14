@@ -144,6 +144,7 @@ def GenerateMap():
     PlaceRooms(rooms, placedRooms, map)
     TrimImage(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     GenDoors(map)
+    CreateGraph(map)
     #for y in map.grid:
     #    for x in y:
     #        print(x.status, end='')
@@ -207,15 +208,15 @@ def CreateGraph(map):
         for x in range(map.minx, map.maxx+1):
             if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
                 if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
-                    tempadj.push_back(map.grid[y][x-1])
+                    tempadj.append(map.grid[y][x-1])
                 if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
-                    tempadj.push_back(map.grid[y][x+1])
+                    tempadj.append(map.grid[y][x+1])
                 if map.grid[y-1][x].status == 1 or map.grid[y-1][x].status == 3:
-                    tempadj.push_back(map.grid[y-1][x])
+                    tempadj.append(map.grid[y-1][x])
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
-                    tempadj.push_back(map.grid[y+1][x])
+                    tempadj.append(map.grid[y+1][x])
                 map.graph.update({(y,x) : tempadj})
-
+    print(map.graph)
             
 
 class App(tk.Tk):
