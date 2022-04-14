@@ -1,5 +1,8 @@
 import random
+import math
 from PIL import Image, ImageDraw, ImageTk
+import tkinter as tk
+from tkinter import NW, ttk
 
 class ImageContainer:
     img:Image = None
@@ -37,7 +40,7 @@ def CheckCollision(room, rooms, map): #true if collision, false if valid
 
 class Square:
     def __init__(self):
-        self.status:int = 0
+        self.status:int = 0 #0: black 1: floor door: 3 wall: 2,4,6,8
         self.adjFloors:int = 0
 
 class Map:
@@ -55,6 +58,7 @@ class Map:
         self.maxx = 0
         self.miny = self.size
         self.maxy = 0
+        self.graph = {}
 
 def TrimImage(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
@@ -196,3 +200,52 @@ def GenDoors(map):
     for group in doorable:
         door = random.choice(group)
         door.status = 3
+
+def CreateGraph(map):
+    for y in range(map.miny, map.maxy+1):
+        tempadj = []
+        for x in range(map.minx, map.maxx+1):
+            if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
+                if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
+                    tempadj.push_back(map.grid[y][x-1])
+                if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
+                    tempadj.push_back(map.grid[y][x+1])
+                if map.grid[y-1][x].status == 1 or map.grid[y-1][x].status == 3:
+                    tempadj.push_back(map.grid[y-1][x])
+                if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
+                    tempadj.push_back(map.grid[y+1][x])
+                map.graph.update({(y,x) : tempadj})
+
+            
+
+class App(tk.Tk):
+    def __init__(self, **params):
+        super().__init__()
+
+        #Window attributes
+        self.title("Map Generator")
+
+        #Initialize widgets
+        self.imageFrame = ttk.Frame(self)
+        self.UIFrame = ttk.Frame(self)
+        self.canvas = tk.Canvas(self.imageFrame, width=750, height=750)
+        self.canvasImage = self.canvas.create_image(0, 0, anchor=NW, tags='image')
+        self.canvas.bind("<Button-1>", lambda event: canvasOnClick(event, self.canvas))
+        self.scaleLabel = ttk.Label(self.UIFrame, text='# of Rooms: ')
+        self.valueLabel = ttk.Label(self.UIFrame, text="10")
+        self.maxRoomSizeLabel = ttk.Label(self.UIFrame, text="Max Room Size:")
+        self.maxRoomSizeValueLabel = ttk.Label(self.UIFrame, text="10")
+        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.valueLabel.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
+        self.maxRoomSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxRoomSizeValueLabel.configure(text='{:.0f}'.format(math.floor(self.maxRoomSizeScale.get()))))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get())))
+
+        self.roomNumScale.grid(row=2, column=0, sticky='n')
+        self.valueLabel.grid(row=1,column=0)
+        self.scaleLabel.grid(row=0, column=0)
+        self.maxRoomSizeLabel.grid(row=3,column=0)
+        self.maxRoomSizeValueLabel.grid(row=4, column=0)
+        self.maxRoomSizeScale.grid(row=5, column=0)
+        self.genButton.grid(row=6, column=0)
+        self.canvas.grid(row=0, column=0)
+        self.imageFrame.grid(row=0,column=0)
+        self.UIFrame.grid(row=0,column=1)
