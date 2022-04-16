@@ -12,7 +12,7 @@ def main():
     dr.ImageContainer.img = Image.new("RGB", (10, 10))
     
     #generate initial image with default params
-    map, dr.ImageContainer.img = dr.GenerateMap()
+    window.map, dr.ImageContainer.img = dr.GenerateMap()
     dr.ImageContainer.imgtk = ImageTk.PhotoImage(dr.ImageContainer.img.resize((750,750), Image.ANTIALIAS))
     window.canvas.itemconfig('image', image = dr.ImageContainer.imgtk)
     window.mainloop()

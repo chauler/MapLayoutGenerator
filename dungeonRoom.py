@@ -58,7 +58,8 @@ class Map:
         self.maxx = 0
         self.miny = self.size
         self.maxy = 0
-        self.graph = {}
+        self.graph = {} #stored as (x,y):[]
+        self.nodes = [] #stored as (x,y)
 
 def TrimImage(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
@@ -145,34 +146,34 @@ def GenerateMap():
     TrimImage(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     GenDoors(map)
     CreateGraph(map)
-    #for y in map.grid:
-    #    for x in y:
-    #        print(x.status, end='')
-    #    print('')
-    #for room in placedRooms:
-    #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
     newImage = DrawPicture(map)
     return map, newImage
 
-def ButtonCallback(numRooms, canvas, maxRoomSize):
+def ButtonCallback(numRooms, canvas, maxRoomSize, map):
     Map.numrooms = numRooms
     Map.roomsize = maxRoomSize
     map, ImageContainer.img = GenerateMap()
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS))
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
-def canvasOnClick(event, canvas):
+def canvasOnClick(event, canvas, map):
     scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
     imgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     cell = (imgCoords[0]//Map.ppi, imgCoords[1]//Map.ppi) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-
-    DrawOnCanvas(cell)
+    if len(map.nodes) >= 2: #If existing path, clear it
+        for node in map.nodes:
+            DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41))
+        map.nodes = []
+    map.nodes.append(cell)
+    if len(map.nodes) == 2:
+        FindPath(map)
+    DrawOnCanvas(cell, color="green")
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
-def DrawOnCanvas(cell):
+def DrawOnCanvas(cell:tuple, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
     draw = ImageDraw.Draw(ImageContainer.img)
-    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = "green")
+    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = params.get('color', "green"))
 
 def GenDoors(map):
     doorable = []
@@ -204,9 +205,9 @@ def GenDoors(map):
 
 def CreateGraph(map):
     for y in range(map.miny, map.maxy+1):
-        tempadj = []
         for x in range(map.minx, map.maxx+1):
             if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
+                tempadj = []
                 if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
                     tempadj.append(map.grid[y][x-1])
                 if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
@@ -215,10 +216,9 @@ def CreateGraph(map):
                     tempadj.append(map.grid[y-1][x])
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
                     tempadj.append(map.grid[y+1][x])
-                map.graph.update({(y,x) : tempadj})
+                map.graph.update({(x,y) : tempadj})
     print(map.graph)
             
-
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
@@ -228,6 +228,7 @@ class App(tk.Tk):
 
         #Initialize widgets
         self.imageFrame = ttk.Frame(self)
+        self.map = None
         self.UIFrame = ttk.Frame(self)
         self.canvas = tk.Canvas(self.imageFrame, width=750, height=750)
         self.canvasImage = self.canvas.create_image(0, 0, anchor=NW, tags='image')
@@ -238,7 +239,7 @@ class App(tk.Tk):
         self.maxRoomSizeValueLabel = ttk.Label(self.UIFrame, text="10")
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.valueLabel.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxRoomSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxRoomSizeValueLabel.configure(text='{:.0f}'.format(math.floor(self.maxRoomSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get())))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get()), self.map))
 
         self.roomNumScale.grid(row=2, column=0, sticky='n')
         self.valueLabel.grid(row=1,column=0)
@@ -250,3 +251,8 @@ class App(tk.Tk):
         self.canvas.grid(row=0, column=0)
         self.imageFrame.grid(row=0,column=0)
         self.UIFrame.grid(row=0,column=1)
+
+def FindPath(map):
+    #given list of 2 (x,y) for starting and ending nodes
+    #given adjacency list, keys are (x,y)
+    pass
