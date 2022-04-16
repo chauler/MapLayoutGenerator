@@ -1,5 +1,6 @@
 import random
 import math
+from typing import Tuple
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
@@ -60,6 +61,8 @@ class Map:
         self.maxy = 0
         self.graph = {} #stored as (x,y):[]
         self.nodes = [] #stored as (x,y)
+    def TrimCoords(self, coords:Tuple): #Takes coords with an unadjusted index and converts them to trimmed form for image processing
+        return (coords[0]-self.minx, coords[1]-self.miny)
 
 def TrimImage(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
@@ -167,20 +170,20 @@ def canvasOnClick(event, canvas, map):
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     scaledimgCoords = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #Index from POV of the canvas post-trimming
     cell = (map.minx+scaledimgCoords[0], map.miny+scaledimgCoords[1]) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-    #if map.grid[cell[0]][cell[1]].status !=1:
-    #    print(map.grid[cell[1]][cell[0]].status)
-    #    return
-    
-    #if len(map.nodes) >= 2: #If existing path, clear it
-    #    for node in map.nodes:
-    #        DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41))
-    #    map.nodes = []
-    #map.nodes.append(cell)
-    #if len(map.nodes) == 2:
-    #    FindPath(map)
-    DrawOnCanvas(scaledimgCoords, color="green")
-    print(map.grid[cell[1]][cell[0]].status)
-    print(cell)
+    if map.grid[cell[1]][cell[0]].status !=1:
+        return
+
+    if len(map.nodes) >= 2: #If existing path, clear it
+        for node in map.nodes:
+            DrawOnCanvas(map.TrimCoords(node), color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) #Floor, else door
+        map.nodes = []
+
+    map.nodes.append(cell)
+    if len(map.nodes) == 2:
+        FindPath(map)
+
+    for node in map.nodes:
+        DrawOnCanvas(map.TrimCoords(node), color="green")
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
