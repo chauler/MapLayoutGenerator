@@ -1,6 +1,5 @@
 import random
 import math
-from typing import Tuple
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
@@ -59,9 +58,9 @@ class Map:
         self.maxx = 0
         self.miny = self.size
         self.maxy = 0
-        self.graph = {} #stored as (x,y):[]
+        self.graph = {} #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
-    def TrimCoords(self, coords:Tuple): #Takes coords with an unadjusted index and converts them to trimmed form for image processing
+    def TrimCoords(self, coords:tuple): #Takes coords with an unadjusted index and converts them to trimmed form for image processing
         return (coords[0]-self.minx, coords[1]-self.miny)
 
 def TrimImage(map):
@@ -149,12 +148,12 @@ def GenerateMap():
     TrimImage(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     GenDoors(map)
     CreateGraph(map)
-    for y in map.grid:
-        for x in y:
-            print(x.status, end='')
-        print('')
-    for room in placedRooms:
-        print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
+    #for y in map.grid:
+    #    for x in y:
+    #        print(x.status, end='')
+    #    print('')
+    #for room in placedRooms:
+    #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
     newImage = DrawPicture(map)
     return map, newImage
 
@@ -188,7 +187,6 @@ def canvasOnClick(event, canvas, map):
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
 def DrawOnCanvas(cell:tuple, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
-    print('drawing')
     draw = ImageDraw.Draw(ImageContainer.img)
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = params.get('color', "green"))
 
@@ -226,13 +224,13 @@ def CreateGraph(map):
             if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
                 tempadj = []
                 if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
-                    tempadj.append(map.grid[y][x-1])
+                    tempadj.append((x-1, y))
                 if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
-                    tempadj.append(map.grid[y][x+1])
+                    tempadj.append((x+1, y))
                 if map.grid[y-1][x].status == 1 or map.grid[y-1][x].status == 3:
-                    tempadj.append(map.grid[y-1][x])
+                    tempadj.append((x, y-1))
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
-                    tempadj.append(map.grid[y+1][x])
+                    tempadj.append((x, y+1))
                 map.graph.update({(x,y) : tempadj})
     print(map.graph)
             
@@ -272,4 +270,5 @@ class App(tk.Tk):
 def FindPath(map):
     #given list of 2 (x,y) for starting and ending nodes
     #given adjacency list, keys are (x,y)
+    #Modify map.nodes attribute with path
     pass
