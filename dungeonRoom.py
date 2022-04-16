@@ -43,9 +43,20 @@ class Square:
         self.status:int = 0 #0: black 1: floor door: 3 wall: 2,4,6,8
         self.adjFloors:int = 0
 
+class Graph:
+    def __init__(self, edges, vertices, adjList):
+        self.edges = edges
+        self.vertices = vertices
+        self.adjList = adjList
+
+class Node:
+    def __init__(self):
+        self.coords:tuple = ()
+        
+
 class Map:
     ppi = 10
-    numrooms = 10
+    numrooms = 3
     roomsize = 10
     def __init__(self, size:int, **params):
         self.size = size
@@ -58,12 +69,14 @@ class Map:
         self.maxx = 0
         self.miny = self.size
         self.maxy = 0
-        self.graph = {} #stored as (x,y):[(x,y),(x,y)]
+        self.xsize = 0
+        self.ysize = 0
+        self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
     def TrimCoords(self, coords:tuple): #Takes coords with an unadjusted index and converts them to trimmed form for image processing
         return (coords[0]-self.minx, coords[1]-self.miny)
 
-def TrimImage(map):
+def TrimGrid(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
         for indexx, x in enumerate(y):
             if x.status > 1: #if cell is wall
@@ -72,20 +85,28 @@ def TrimImage(map):
                 map.minx = indexx if indexx < map.minx else map.minx
                 map.maxx = indexx if indexx > map.maxx else map.maxx
 
+    newGrid = [[Square() for x in range(map.minx, map.maxx+1)] for y in range(map.miny, map.maxy+1)]
+    for indexy, y, in enumerate(newGrid):
+        for indexx, x in enumerate(y):
+            newGrid[indexy][indexx] = map.grid[indexy+map.miny][indexx+map.minx]
+    map.grid = newGrid
+    map.xsize = map.maxx-map.minx+1
+    map.ysize = map.maxy-map.miny+1
+
 def DrawPicture(map:Map):
     ppi = Map.ppi
     biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
     image = Image.new("RGB", (biggerDim*ppi+ppi, biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
     #for each cell, draw 10x10 pixels
-    for y in range(map.miny, map.maxy+1):
-        for x in range(map.minx, map.maxx+1):
+    for y in range(map.ysize):
+        for x in range(map.xsize):
             if map.grid[y][x].status == 1:
-                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (51, 23, 12))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (51, 23, 12))
             elif map.grid[y][x].status == 3:
-                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (146, 41, 41))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (146, 41, 41))
             elif map.grid[y][x].status > 1:
-                draw.rectangle([(x-map.minx)*ppi,(y-map.miny)*ppi,((x-map.minx)*ppi)+ppi,((y-map.miny)*ppi)+ppi], outline="black", fill = (93, 89, 97))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (93, 89, 97))
     return image
 
 def GenRooms(rooms):
@@ -145,15 +166,9 @@ def GenerateMap():
 
 #place rooms on the map, random walk from center
     PlaceRooms(rooms, placedRooms, map)
-    TrimImage(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
+    TrimGrid(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     GenDoors(map)
     CreateGraph(map)
-    #for y in map.grid:
-    #    for x in y:
-    #        print(x.status, end='')
-    #    print('')
-    #for room in placedRooms:
-    #    print(room.x, ' ', room.y, ' ', room.x+room.length, ' ', room.y+room.height)
     newImage = DrawPicture(map)
     return map, newImage
 
@@ -168,13 +183,13 @@ def canvasOnClick(event, canvas, map):
     scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     scaledimgCoords = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #Index from POV of the canvas post-trimming
-    cell = (map.minx+scaledimgCoords[0], map.miny+scaledimgCoords[1]) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
+    cell = (scaledimgCoords[0], scaledimgCoords[1]) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
     if map.grid[cell[1]][cell[0]].status !=1:
         return
 
     if len(map.nodes) >= 2: #If existing path, clear it
         for node in map.nodes:
-            DrawOnCanvas(map.TrimCoords(node), color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) #Floor, else door
+            DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) #Floor, else door
         map.nodes = []
 
     map.nodes.append(cell)
@@ -182,7 +197,7 @@ def canvasOnClick(event, canvas, map):
         FindPath(map)
 
     for node in map.nodes:
-        DrawOnCanvas(map.TrimCoords(node), color="green")
+        DrawOnCanvas(node, color="green")
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
@@ -193,20 +208,20 @@ def DrawOnCanvas(cell:tuple, **params): #Takes in a (x,y) tuple, draws associate
 def GenDoors(map):
     doorable = []
     doorGroups = []
-    for y in range(map.miny, map.maxy+1):
-        for x in range(map.minx, map.maxx+1):
-            if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+
+    for indexy, y in enumerate(map.grid):
+        for indexx, x in enumerate(y):
+            if indexx == 0 or indexx == map.xsize-1 or indexy==0 or indexy==map.ysize-1 or x.status == 0 or x.status == 1: #if pointer is on the edge of the map or not a wall, skip
                 continue
             #Generate lists of horizontally adjacent doorable tiles
-            if map.grid[y+1][x].status==1 and map.grid[y-1][x].status ==1: #if doorable
-                doorGroups.append(map.grid[y][x])
+            if map.grid[indexy+1][indexx].status==1 and map.grid[indexy-1][indexx].status ==1: #if doorable
+                doorGroups.append(x)
             elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
                 doorable.append(doorGroups)
                 doorGroups = []
-
-    for x in range(map.minx, map.maxx+1):
-        for y in range(map.miny, map.maxy+1):
-                if x == 0 or x == map.size-1 or y==0 or y==map.size-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+    for x in range(map.xsize):
+        for y in range(map.ysize):
+                if x == 0 or x == map.xsize-1 or y==0 or y==map.ysize-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
                     continue
                 if map.grid[y][x+1].status==1 and map.grid[y][x-1].status ==1: #if doorable
                     doorGroups.append(map.grid[y][x])
@@ -219,21 +234,28 @@ def GenDoors(map):
         door.status = 3
 
 def CreateGraph(map):
-    for y in range(map.miny, map.maxy+1):
-        for x in range(map.minx, map.maxx+1):
+    edges = []
+    vertices = []
+    adjList = {}
+    for y in range(map.ysize):
+        for x in range(map.xsize): #Iterate through tiles in relevant portion of map
             if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
+                vertices.append((x,y))
                 tempadj = []
                 if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
+                    edges.append(((x,y),(x-1,y)))
                     tempadj.append((x-1, y))
                 if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
+                    edges.append(((x,y),(x+1,y)))
                     tempadj.append((x+1, y))
                 if map.grid[y-1][x].status == 1 or map.grid[y-1][x].status == 3:
+                    edges.append(((x,y),(x,y-1)))
                     tempadj.append((x, y-1))
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
+                    edges.append(((x,y),(x,y+1)))
                     tempadj.append((x, y+1))
-                map.graph.update({(x,y) : tempadj})
-    print(map.graph)
-            
+                adjList.update({(x,y) : tempadj})
+    map.graph = Graph(edges, vertices, adjList)
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
