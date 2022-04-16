@@ -56,7 +56,7 @@ class Node:
 
 class Map:
     ppi = 10
-    numrooms = 3
+    numrooms = 10
     roomsize = 10
     def __init__(self, size:int, **params):
         self.size = size
@@ -182,28 +182,27 @@ def ButtonCallback(numRooms, canvas, maxRoomSize, window):
 def canvasOnClick(event, canvas, map):
     scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
-    scaledimgCoords = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #Index from POV of the canvas post-trimming
-    cell = (scaledimgCoords[0], scaledimgCoords[1]) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-    if map.grid[cell[1]][cell[0]].status !=1:
+    cell = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
+    if map.grid[cell[1]][cell[0]].status != 1 or map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
         return
 
     if len(map.nodes) >= 2: #If existing path, clear it
         for node in map.nodes:
-            DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) #Floor, else door
+            DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
         map.nodes = []
 
     map.nodes.append(cell)
-    if len(map.nodes) == 2:
-        FindPath(map)
+    if len(map.nodes) == 2: #If this was the second node clicked, find a path between the two
+        FindPath(map) #Adds nodes in path to nodes[]
 
     for node in map.nodes:
-        DrawOnCanvas(node, color="green")
+        DrawOnCanvas(node, color="green") #Colors nodes on path
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
 def DrawOnCanvas(cell:tuple, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
     draw = ImageDraw.Draw(ImageContainer.img)
-    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi),outline="black", fill = params.get('color', "green"))
+    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
 
 def GenDoors(map):
     doorable = []
@@ -256,6 +255,7 @@ def CreateGraph(map):
                     tempadj.append((x, y+1))
                 adjList.update({(x,y) : tempadj})
     map.graph = Graph(edges, vertices, adjList)
+    print(map.graph.adjList)
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
