@@ -50,9 +50,11 @@ class Graph:
         self.adjList = adjList
 
 class Node:
-    def __init__(self):
-        self.coords:tuple = ()
-        
+    def __init__(self, coords):
+        self.coords:tuple = coords
+        self.f = 0
+        self.g = 0
+        self.h = 0       
 
 class Map:
     ppi = 10
@@ -239,7 +241,7 @@ def CreateGraph(map):
     for y in range(map.ysize):
         for x in range(map.xsize): #Iterate through tiles in relevant portion of map
             if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
-                vertices.append((x,y))
+                vertices.append(Node((x,y))) #Create new node and add it to vertex list
                 tempadj = []
                 if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
                     edges.append(((x,y),(x-1,y)))
@@ -253,7 +255,7 @@ def CreateGraph(map):
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
                     edges.append(((x,y),(x,y+1)))
                     tempadj.append((x, y+1))
-                adjList.update({(x,y) : tempadj})
+                adjList.update({vertices[-1] : tempadj})
     map.graph = Graph(edges, vertices, adjList)
     print(map.graph.adjList)
 class App(tk.Tk):
@@ -293,4 +295,8 @@ def FindPath(map):
     #given list of 2 (x,y) for starting and ending nodes
     #given adjacency list, keys are (x,y)
     #Modify map.nodes attribute with path
-    pass
+    for vertex in map.graph.vertices:
+        if vertex.coords == map.nodes[0]:
+            startNode = vertex
+        elif vertex.coords == map.nodes[1]:
+            endNode = vertex
