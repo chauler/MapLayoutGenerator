@@ -129,7 +129,7 @@ def PlaceRooms(rooms, placedRooms, map):
             move = random.choice(dir)
             coord[0] += move[0]
             coord[1] += move[1]
-            if coord[0] >= map.size or coord[1] >= map.size: #go oob
+            if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0: #go oob
                 coord[0] -= move[0] #undo move and try again
                 coord[1] -= move[1]
             else: #breaks only if move is valid and doesnt go oob
@@ -183,7 +183,7 @@ def canvasOnClick(event, canvas, map):
     scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     cell = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-    if map.grid[cell[1]][cell[0]].status != 1 or map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
+    if map.grid[cell[1]][cell[0]].status != 1 and map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
         return
 
     if len(map.nodes) >= 2: #If existing path, clear it
