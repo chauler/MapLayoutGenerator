@@ -255,7 +255,7 @@ def CreateGraph(map):
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
                     edges.append(((x,y),(x,y+1)))
                     tempadj.append((x, y+1))
-                adjList.update({vertices[-1] : tempadj})
+                adjList.update({vertices[-1] : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
     map.graph = Graph(edges, vertices, adjList)
     print(map.graph.adjList)
 class App(tk.Tk):
@@ -295,8 +295,29 @@ def FindPath(map):
     #given list of 2 (x,y) for starting and ending nodes
     #given adjacency list, keys are (x,y)
     #Modify map.nodes attribute with path
-    for vertex in map.graph.vertices:
+    openList = []
+    closedList = []
+
+    for vertex in map.graph.vertices: #Tie coords in nodes[] to node object in the graph
         if vertex.coords == map.nodes[0]:
             startNode = vertex
         elif vertex.coords == map.nodes[1]:
             endNode = vertex
+    
+    openList.append(startNode)
+
+    while endNode not in closedList or openList == []:
+        pass
+        #Look for the lowest F cost square on the open list. We refer to this as the current square.
+        #Switch it to the closed list.
+        #For each of the 8 squares adjacent to this current square:
+        #If it isn’t on the open list, add it to the open list. Make the current square the parent of this square. Record the F, G, and H costs of the square.
+        #If it is on the open list already, check to see if this path to that square is better, using G cost as the measure. 
+        #A lower G cost means that this is a better path. If so, change the parent of the square to the current square, and recalculate the G and F scores of the square. 
+        #If you are keeping your open list sorted by F score, you may need to resort the list to account for the change.
+        
+        
+        #Stop when you:
+        #Add the target square to the closed list, in which case the path has been found, or
+        #Fail to find the target square, and the open list is empty. In this case, there is no path.
+        #Save the path. Working backwards from the target square, go from each square to its parent square until you reach the starting square. That is your path.
