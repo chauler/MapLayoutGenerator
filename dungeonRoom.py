@@ -1,13 +1,8 @@
-from copy import deepcopy
 import random
 import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
-
-class ImageContainer:
-    img:Image = None
-    imgtk:ImageTk = None
 
 class Room:
     def __init__(self, maxSize=10):
@@ -17,9 +12,8 @@ class Room:
         self.x = None #no coordinates initially
         self.y = None
     def UpdateVertices(self, coords:list): #sets a rooms x,y coords
-        self.blCorner = coords
-        self.x = self.blCorner[0]
-        self.y = self.blCorner[1]
+        self.x = coords[0]
+        self.y = coords[1]
 
 def CheckCollision(room, rooms, map): #true if collision, false if valid
     if room.x + room.length >= map.size or room.y + room.height >= map.size: #checking with map bounds
@@ -27,9 +21,7 @@ def CheckCollision(room, rooms, map): #true if collision, false if valid
     count=0
     for y in range(room.y, room.y+room.height+1):
         for x in range(room.x, room.x+room.length+1):
-    #        print('x=',x,' y=', y)
             count = count+1 if map.grid[y][x].status > 1 else count
-    #        print(count)
     if count < 3 and len(rooms) != 0:
         return True
     for obj in rooms: #passed bounds check, checking with other rooms
@@ -179,38 +171,38 @@ def GenerateMap():
     newImage = DrawPicture(map)
     return map, newImage
 
-def ButtonCallback(numRooms, canvas, maxRoomSize, window):
+def ButtonCallback(numRooms, maxRoomSize, window):
     Map.numrooms = numRooms
     Map.roomsize = maxRoomSize
-    window.map, ImageContainer.img = GenerateMap()
-    ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS))
-    canvas.itemconfig('image', image = ImageContainer.imgtk)
+    window.map, window.img = GenerateMap()
+    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
+    window.canvas.itemconfig('image', image = window.imgtk)
 
-def canvasOnClick(event, canvas, map):
-    scale = ImageContainer.img.width / 750 #gets the multiplier used to convert to and from original image size
+def canvasOnClick(event, window):
+    scale = window.img.width / 750 #gets the multiplier used to convert to and from original image size
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     cell = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-    if map.grid[cell[1]][cell[0]].status != 1 and map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
+    if window.map.grid[cell[1]][cell[0]].status != 1 and window.map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
         return
 
-    if len(map.nodes) >= 2: #If existing path, clear it
-        for node in map.nodes:
-            DrawOnCanvas(node, color=(51, 23, 12) if map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
-        map.nodes = []
+    if len(window.map.nodes) >= 2: #If existing path, clear it
+        for node in window.map.nodes:
+            DrawOnCanvas(node, window, color=(51, 23, 12) if window.map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
+        window.map.nodes = []
 
-    map.nodes.append(cell)
-    if len(map.nodes) == 2: #If this was the second node clicked, find a path between the two
-        map.nodes = FindPath(map) #Adds nodes in path to nodes[]
-        for node in map.nodes:
-            DrawOnCanvas(node, color='green')
-    for node in map.nodes:
-        DrawOnCanvas(node, color="green") #Colors nodes on path
+    window.map.nodes.append(cell)
+    if len(window.map.nodes) == 2: #If this was the second node clicked, find a path between the two
+        window.map.nodes = FindPath(window.map) #Adds nodes in path to nodes[]
+        for node in window.map.nodes:
+            DrawOnCanvas(node, window, color='green')
+    for node in window.map.nodes:
+        DrawOnCanvas(node, window, color="green") #Colors nodes on path
 
-    ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
-    canvas.itemconfig('image', image = ImageContainer.imgtk)
+    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
+    window.canvas.itemconfig('image', image = window.imgtk)
 
-def DrawOnCanvas(cell:tuple, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
-    draw = ImageDraw.Draw(ImageContainer.img)
+def DrawOnCanvas(cell:tuple, window, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
+    draw = ImageDraw.Draw(window.img)
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
 
 def GenDoors(map):
@@ -272,19 +264,21 @@ class App(tk.Tk):
         self.title("Map Generator")
 
         #Initialize widgets
+        self.img:Image = None
+        self.imgtk:ImageTk = None
         self.imageFrame = ttk.Frame(self)
         self.map = Map(0)
         self.UIFrame = ttk.Frame(self)
         self.canvas = tk.Canvas(self.imageFrame, width=750, height=750)
         self.canvasImage = self.canvas.create_image(0, 0, anchor=NW, tags='image')
-        self.canvas.bind("<Button-1>", lambda event: canvasOnClick(event, self.canvas, self.map))
+        self.canvas.bind("<Button-1>", lambda event: canvasOnClick(event, self))
         self.scaleLabel = ttk.Label(self.UIFrame, text='# of Rooms: ')
         self.valueLabel = ttk.Label(self.UIFrame, text="10")
         self.maxRoomSizeLabel = ttk.Label(self.UIFrame, text="Max Room Size:")
         self.maxRoomSizeValueLabel = ttk.Label(self.UIFrame, text="10")
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.valueLabel.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxRoomSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxRoomSizeValueLabel.configure(text='{:.0f}'.format(math.floor(self.maxRoomSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), self.canvas, math.floor(self.maxRoomSizeScale.get()), self))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), math.floor(self.maxRoomSizeScale.get()), self))
 
         self.roomNumScale.grid(row=2, column=0, sticky='n')
         self.valueLabel.grid(row=1,column=0)
