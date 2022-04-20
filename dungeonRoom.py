@@ -195,10 +195,12 @@ def canvasOnClick(event, canvas, map):
 
     map.nodes.append(cell)
     if len(map.nodes) == 2: #If this was the second node clicked, find a path between the two
-        FindPath(map) #Adds nodes in path to nodes[]
-
+        pathList = FindPath(map) #Adds nodes in path to nodes[]
+        for node in pathList:
+            DrawOnCanvas(node, color='green')
     for node in map.nodes:
         DrawOnCanvas(node, color="green") #Colors nodes on path
+
     ImageContainer.imgtk = ImageTk.PhotoImage(ImageContainer.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     canvas.itemconfig('image', image = ImageContainer.imgtk)
 
@@ -257,7 +259,7 @@ def CreateGraph(map):
                     tempadj.append((x, y+1))
                 adjList.update({vertices[-1] : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
     map.graph = Graph(edges, vertices, adjList)
-    print(map.graph.adjList)
+    #print(map.graph.adjList)
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
@@ -305,11 +307,22 @@ def FindPath(map):
             endNode = vertex
     
     openList.append(startNode)
-
-    while endNode not in closedList or openList == []:
-        pass
+    while endNode not in closedList or openList != []:
         #Look for the lowest F cost square on the open list. We refer to this as the current square.
         #Switch it to the closed list.
+        openList.sort(key=lambda item: item.f) #Sort openList by f
+        currNode = openList.pop(0) #Set current node to openList node with lowest f
+        closedList.append(currNode)
+
+        if currNode == endNode:
+            return closedList
+
+        childList = map.graph.adjList[currNode]
+
+        for child in childList:
+            if child in closedList:
+                continue
+        #for entry in map.graph.adjList[]:
         #For each of the 8 squares adjacent to this current square:
         #If it isn’t on the open list, add it to the open list. Make the current square the parent of this square. Record the F, G, and H costs of the square.
         #If it is on the open list already, check to see if this path to that square is better, using G cost as the measure. 
