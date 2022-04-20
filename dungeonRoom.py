@@ -295,7 +295,6 @@ def FindPath(map):
     #Modify map.nodes attribute with path
     openList = []
     closedList = []
-    print('still running')
     startNode = Node(map.nodes[0]) #Create nodes for our start and endpoint.
     endNode = Node(map.nodes[1])
     openList.append(startNode) #Add start to openList
@@ -318,27 +317,16 @@ def FindPath(map):
             childList.append(Node(item, currNode))
 
         for child in childList:
-            childIsClosed = False
             if [closedChild for closedChild in closedList if closedChild == child] != []:
                 continue
-            #for closedChild in closedList:
-            #    if child == closedChild:
-            #        childIsClosed = True
-            #if childIsClosed:
-            #    continue
+
             child.g = currNode.g + 1
-            print('checking', child.coords)
             child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1]))#a**2 + b**2 = c**2
             child.f = child.g + child.h
 
             if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []:
                 continue
 
-            #for openNode in openList:
-            #    if openNode == child and child.g > openNode.g:
-            #        childIsClosed = True
-            #if childIsClosed:
-            #    continue
             openList.append(child)
 
 
