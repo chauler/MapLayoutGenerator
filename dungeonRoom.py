@@ -1,3 +1,4 @@
+from copy import deepcopy
 import random
 import math
 from PIL import Image, ImageDraw, ImageTk
@@ -50,11 +51,15 @@ class Graph:
         self.adjList = adjList
 
 class Node:
-    def __init__(self, coords):
+    parent = None
+    def __init__(self, coords, parent=None):
         self.coords:tuple = coords
-        self.f = 0
-        self.g = 0
-        self.h = 0       
+        self.f = 999999
+        self.g = 999999
+        self.h = 0
+        self.parent = parent
+    def __eq__(self, other):
+        return self.coords == other.coords
 
 class Map:
     ppi = 10
@@ -195,8 +200,8 @@ def canvasOnClick(event, canvas, map):
 
     map.nodes.append(cell)
     if len(map.nodes) == 2: #If this was the second node clicked, find a path between the two
-        pathList = FindPath(map) #Adds nodes in path to nodes[]
-        for node in pathList:
+        map.nodes = FindPath(map) #Adds nodes in path to nodes[]
+        for node in map.nodes:
             DrawOnCanvas(node, color='green')
     for node in map.nodes:
         DrawOnCanvas(node, color="green") #Colors nodes on path
@@ -257,9 +262,8 @@ def CreateGraph(map):
                 if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
                     edges.append(((x,y),(x,y+1)))
                     tempadj.append((x, y+1))
-                adjList.update({vertices[-1] : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
+                adjList.update({(x,y) : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
     map.graph = Graph(edges, vertices, adjList)
-    #print(map.graph.adjList)
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
@@ -300,14 +304,10 @@ def FindPath(map):
     openList = []
     closedList = []
 
-    for vertex in map.graph.vertices: #Tie coords in nodes[] to node object in the graph
-        if vertex.coords == map.nodes[0]:
-            startNode = vertex
-        elif vertex.coords == map.nodes[1]:
-            endNode = vertex
-    
+    startNode = Node(map.nodes[0])
+    endNode = Node(map.nodes[1])
     openList.append(startNode)
-    while endNode not in closedList or openList != []:
+    while openList != []:
         #Look for the lowest F cost square on the open list. We refer to this as the current square.
         #Switch it to the closed list.
         openList.sort(key=lambda item: item.f) #Sort openList by f
@@ -315,13 +315,40 @@ def FindPath(map):
         closedList.append(currNode)
 
         if currNode == endNode:
-            return closedList
+            pathList = []
+            while currNode is not None:
+                pathList.append(currNode.coords)
+                currNode = currNode.parent #Flesh this out
+            return pathList
 
-        childList = map.graph.adjList[currNode]
+        childList = []
+        for item in map.graph.adjList[currNode.coords]:
+            childList.append(Node(item, currNode))
 
         for child in childList:
-            if child in closedList:
+            childIsClosed = False
+            for closedChild in closedList:
+                if child == closedChild:
+                    childIsClosed = True
+            if childIsClosed:
                 continue
+            child.g = currNode.g + 1
+            child.h = ((child.coords[0] - endNode.coords[0])**2) + ((child.coords[1] - endNode.coords[1])**2)#a**2 + b**2 = c**2
+            child.f = child.g + child.h
+
+            for openNode in openList:
+                if openNode == child and child.g > openNode.g:
+                    childIsClosed = True
+                elif openNode == child and child.g < openNode.g:
+                    openNode.parent = currNode
+                    openNode.g = child.g
+                    openNode.f = child.f
+                    childIsClosed = True
+            if childIsClosed:
+                continue
+            openList.append(child)
+
+
         #for entry in map.graph.adjList[]:
         #For each of the 8 squares adjacent to this current square:
         #If it isn’t on the open list, add it to the open list. Make the current square the parent of this square. Record the F, G, and H costs of the square.
@@ -334,3 +361,4 @@ def FindPath(map):
         #Add the target square to the closed list, in which case the path has been found, or
         #Fail to find the target square, and the open list is empty. In this case, there is no path.
         #Save the path. Working backwards from the target square, go from each square to its parent square until you reach the starting square. That is your path.
+    return 'Failed'
