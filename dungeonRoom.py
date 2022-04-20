@@ -72,8 +72,6 @@ class Map:
         self.ysize = 0
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
-    def TrimCoords(self, coords:tuple): #Takes coords with an unadjusted index and converts them to trimmed form for image processing
-        return (coords[0]-self.minx, coords[1]-self.miny)
 
 def TrimGrid(map):
     for indexy, y in enumerate(map.grid): #grabs farthest left wall
@@ -172,11 +170,11 @@ def GenerateMap():
     return map, newImage
 
 def ButtonCallback(numRooms, maxRoomSize, window):
-    Map.numrooms = numRooms
+    Map.numrooms = numRooms #Generate button pressed. Update map parameters.
     Map.roomsize = maxRoomSize
-    window.map, window.img = GenerateMap()
+    window.map, window.img = GenerateMap() #Generate new map and send the new data to the window.
     window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
-    window.canvas.itemconfig('image', image = window.imgtk)
+    window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
 
 def canvasOnClick(event, window):
     scale = window.img.width / 750 #gets the multiplier used to convert to and from original image size
@@ -297,11 +295,11 @@ def FindPath(map):
     #Modify map.nodes attribute with path
     openList = []
     closedList = []
-
-    startNode = Node(map.nodes[0])
+    print('still running')
+    startNode = Node(map.nodes[0]) #Create nodes for our start and endpoint.
     endNode = Node(map.nodes[1])
-    openList.append(startNode)
-    while openList != []:
+    openList.append(startNode) #Add start to openList
+    while openList != []: #Loop until no nodes to search
         #Look for the lowest F cost square on the open list. We refer to this as the current square.
         #Switch it to the closed list.
         openList.sort(key=lambda item: item.f) #Sort openList by f
@@ -310,36 +308,37 @@ def FindPath(map):
 
         if currNode == endNode:
             pathList = []
-            while currNode is not None:
+            while currNode is not None: #Backtracks from currNode, adding it to the return list and going to the parent
                 pathList.append(currNode.coords)
-                currNode = currNode.parent #Flesh this out
+                currNode = currNode.parent
             return pathList
 
         childList = []
-        for item in map.graph.adjList[currNode.coords]:
+        for item in map.graph.adjList[currNode.coords]: #Generate a new node for each edge from this node
             childList.append(Node(item, currNode))
 
         for child in childList:
             childIsClosed = False
-            for closedChild in closedList:
-                if child == closedChild:
-                    childIsClosed = True
-            if childIsClosed:
+            if [closedChild for closedChild in closedList if closedChild == child] != []:
                 continue
+            #for closedChild in closedList:
+            #    if child == closedChild:
+            #        childIsClosed = True
+            #if childIsClosed:
+            #    continue
             child.g = currNode.g + 1
-            child.h = ((child.coords[0] - endNode.coords[0])**2) + ((child.coords[1] - endNode.coords[1])**2)#a**2 + b**2 = c**2
+            print('checking', child.coords)
+            child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1]))#a**2 + b**2 = c**2
             child.f = child.g + child.h
 
-            for openNode in openList:
-                if openNode == child and child.g > openNode.g:
-                    childIsClosed = True
-                elif openNode == child and child.g < openNode.g:
-                    openNode.parent = currNode
-                    openNode.g = child.g
-                    openNode.f = child.f
-                    childIsClosed = True
-            if childIsClosed:
+            if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []:
                 continue
+
+            #for openNode in openList:
+            #    if openNode == child and child.g > openNode.g:
+            #        childIsClosed = True
+            #if childIsClosed:
+            #    continue
             openList.append(child)
 
 
