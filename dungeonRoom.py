@@ -346,14 +346,13 @@ def FindPath(map):
     return 'Failed'
 
 def CheckConnection(room, placedRooms, map): #Returns true if disconnected, false otherwise to break the search loop
-    overlapCount = 0
     if placedRooms == []:
         return False
     for x in range(room.x, room.x+room.length+1):
         for y in range(room.y, room.y+room.height+1):
-            if map.grid[y][x].status ==2 or map.grid[y][x].status == 4:
-                overlapCount = overlapCount + 1
-            else:
-                overlapCount = 0
-            if overlapCount >= 3:
-                return False
+            if x == room.x or x == room.x+room.length or y == room.y or y == room.y+room.height: #If on a wall
+                if x == 0 or x == map.size-1 or y==0 or y==map.size-1: #Skip if on edge of map
+                    continue
+                if map.grid[y][x+1].status==1 or map.grid[y][x-1].status ==1 or map.grid[y+1][x].status==1 or map.grid[y-1][x].status ==1:
+                    return False #Room has a connection if it has a floor connection with an existing room.
+    return True #If no wall tile is adjacent to an existing floor, room has no connection.
