@@ -73,22 +73,74 @@ class Map:
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
 
-def TrimGrid(map):
-    for indexy, y in enumerate(map.grid): #grabs farthest left wall
-        for indexx, x in enumerate(y):
-            if x.status > 1: #if cell is wall
-                map.miny = indexy if indexy < map.miny else map.miny
-                map.maxy = indexy if indexy > map.maxy else map.maxy
-                map.minx = indexx if indexx < map.minx else map.minx
-                map.maxx = indexx if indexx > map.maxx else map.maxx
+    def TrimGrid(self):
+        for indexy, y in enumerate(self.grid): #grabs farthest left wall
+            for indexx, x in enumerate(y):
+                if x.status > 1: #if cell is wall
+                    self.miny = indexy if indexy < self.miny else self.miny
+                    self.maxy = indexy if indexy > self.maxy else self.maxy
+                    self.minx = indexx if indexx < self.minx else self.minx
+                    self.maxx = indexx if indexx > self.maxx else self.maxx
 
-    newGrid = [[Square() for x in range(map.minx, map.maxx+1)] for y in range(map.miny, map.maxy+1)]
-    for indexy, y, in enumerate(newGrid):
-        for indexx, x in enumerate(y):
-            newGrid[indexy][indexx] = map.grid[indexy+map.miny][indexx+map.minx]
-    map.grid = newGrid
-    map.xsize = map.maxx-map.minx+1
-    map.ysize = map.maxy-map.miny+1
+        newGrid = [[Square() for x in range(self.minx, self.maxx+1)] for y in range(self.miny, self.maxy+1)]
+        for indexy, y, in enumerate(newGrid):
+            for indexx, x in enumerate(y):
+                newGrid[indexy][indexx] = self.grid[indexy+self.miny][indexx+self.minx]
+        self.grid = newGrid
+        self.xsize = self.maxx-self.minx+1
+        self.ysize = self.maxy-self.miny+1
+
+    def GenDoors(self):
+        doorable = []
+        doorGroups = []
+
+        for indexy, y in enumerate(self.grid):
+            for indexx, x in enumerate(y):
+                if indexx == 0 or indexx == self.xsize-1 or indexy==0 or indexy==self.ysize-1 or x.status == 0 or x.status == 1: #if pointer is on the edge of the map or not a wall, skip
+                    continue
+                #Generate lists of horizontally adjacent doorable tiles
+                if self.grid[indexy+1][indexx].status==1 and self.grid[indexy-1][indexx].status ==1: #if doorable
+                    doorGroups.append(x)
+                elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
+                    doorable.append(doorGroups)
+                    doorGroups = []
+        for x in range(self.xsize):
+            for y in range(self.ysize):
+                    if x == 0 or x == self.xsize-1 or y==0 or y==self.ysize-1 or self.grid[y][x].status == 0 or self.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+                        continue
+                    if self.grid[y][x+1].status==1 and self.grid[y][x-1].status ==1: #if doorable
+                        doorGroups.append(self.grid[y][x])
+                    elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
+                        doorable.append(doorGroups)
+                        doorGroups = []
+
+        for group in doorable:
+            door = random.choice(group)
+            door.status = 3
+
+    def CreateGraph(self):
+        edges = []
+        vertices = []
+        adjList = {}
+        for y in range(self.ysize):
+            for x in range(self.xsize): #Iterate through tiles in relevant portion of map
+                if self.grid[y][x].status == 1 or self.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
+                    vertices.append(Node((x,y))) #Create new node and add it to vertex list
+                    tempadj = []
+                    if self.grid[y][x-1].status == 1 or self.grid[y][x-1].status == 3:
+                        edges.append(((x,y),(x-1,y)))
+                        tempadj.append((x-1, y))
+                    if self.grid[y][x+1].status == 1 or self.grid[y][x+1].status ==3:
+                        edges.append(((x,y),(x+1,y)))
+                        tempadj.append((x+1, y))
+                    if self.grid[y-1][x].status == 1 or self.grid[y-1][x].status == 3:
+                        edges.append(((x,y),(x,y-1)))
+                        tempadj.append((x, y-1))
+                    if self.grid[y+1][x].status == 1 or self.grid[y+1][x].status ==3:
+                        edges.append(((x,y),(x,y+1)))
+                        tempadj.append((x, y+1))
+                    adjList.update({(x,y) : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
+        self.graph = Graph(edges, vertices, adjList)
 
 def DrawPicture(map:Map):
     ppi = Map.ppi
@@ -164,9 +216,9 @@ def GenerateMap():
 
 #place rooms on the map, random walk from center
     PlaceRooms(rooms, placedRooms, map)
-    TrimGrid(map) #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
-    GenDoors(map)
-    CreateGraph(map)
+    map.TrimGrid() #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
+    map.GenDoors()
+    map.CreateGraph()
     newImage = DrawPicture(map)
     return map, newImage
 
@@ -204,57 +256,6 @@ def DrawOnCanvas(cell:tuple, window, **params): #Takes in a (x,y) tuple, draws a
     draw = ImageDraw.Draw(window.img)
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
 
-def GenDoors(map):
-    doorable = []
-    doorGroups = []
-
-    for indexy, y in enumerate(map.grid):
-        for indexx, x in enumerate(y):
-            if indexx == 0 or indexx == map.xsize-1 or indexy==0 or indexy==map.ysize-1 or x.status == 0 or x.status == 1: #if pointer is on the edge of the map or not a wall, skip
-                continue
-            #Generate lists of horizontally adjacent doorable tiles
-            if map.grid[indexy+1][indexx].status==1 and map.grid[indexy-1][indexx].status ==1: #if doorable
-                doorGroups.append(x)
-            elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
-                doorable.append(doorGroups)
-                doorGroups = []
-    for x in range(map.xsize):
-        for y in range(map.ysize):
-                if x == 0 or x == map.xsize-1 or y==0 or y==map.ysize-1 or map.grid[y][x].status == 0 or map.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
-                    continue
-                if map.grid[y][x+1].status==1 and map.grid[y][x-1].status ==1: #if doorable
-                    doorGroups.append(map.grid[y][x])
-                elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
-                    doorable.append(doorGroups)
-                    doorGroups = []
-
-    for group in doorable:
-        door = random.choice(group)
-        door.status = 3
-
-def CreateGraph(map):
-    edges = []
-    vertices = []
-    adjList = {}
-    for y in range(map.ysize):
-        for x in range(map.xsize): #Iterate through tiles in relevant portion of map
-            if map.grid[y][x].status == 1 or map.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
-                vertices.append(Node((x,y))) #Create new node and add it to vertex list
-                tempadj = []
-                if map.grid[y][x-1].status == 1 or map.grid[y][x-1].status == 3:
-                    edges.append(((x,y),(x-1,y)))
-                    tempadj.append((x-1, y))
-                if map.grid[y][x+1].status == 1 or map.grid[y][x+1].status ==3:
-                    edges.append(((x,y),(x+1,y)))
-                    tempadj.append((x+1, y))
-                if map.grid[y-1][x].status == 1 or map.grid[y-1][x].status == 3:
-                    edges.append(((x,y),(x,y-1)))
-                    tempadj.append((x, y-1))
-                if map.grid[y+1][x].status == 1 or map.grid[y+1][x].status ==3:
-                    edges.append(((x,y),(x,y+1)))
-                    tempadj.append((x, y+1))
-                adjList.update({(x,y) : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
-    map.graph = Graph(edges, vertices, adjList)
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
@@ -351,7 +352,7 @@ def CheckConnection(room, placedRooms, map): #Returns true if disconnected, fals
     for x in range(room.x, room.x+room.length+1):
         for y in range(room.y, room.y+room.height+1):
             if x == room.x or x == room.x+room.length or y == room.y or y == room.y+room.height: #If on a wall
-                if x == 0 or x == map.size-1 or y==0 or y==map.size-1: #Skip if on edge of map
+                if x==0 or x==map.size-1 or y==0 or y==map.size-1 or x==room.x and y==room.y or x==room.x and y==room.y+room.height or x==room.x+room.length and y==room.y or x==room.x+room.length and y==room.y+room.height: #Skip if on edge of map
                     continue
                 if map.grid[y][x+1].status==1 or map.grid[y][x-1].status ==1 or map.grid[y+1][x].status==1 or map.grid[y-1][x].status ==1:
                     return False #Room has a connection if it has a floor connection with an existing room.
