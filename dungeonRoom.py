@@ -133,13 +133,14 @@ def PlaceRooms(rooms, placedRooms, map):
                 break
     for room in rooms:
         room.UpdateVertices(coord) #place the room on a hypothetical position, then adjust position in while loop
-        while CheckCollision(room, placedRooms, map): #while there is a collision with border or existing rooms
+        while CheckCollision(room, placedRooms, map) or CheckConnection(room, placedRooms, map): #while there is a collision with border or existing rooms
             move = random.choice(dir)
             coord[0] += move[0]
             coord[1] += move[1]
             if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0: #go oob
                 coord[0] -= move[0] #undo move and try again
                 coord[1] -= move[1]
+
             room.UpdateVertices(coord) #update with new coords, try again
 
         placedRooms.append(room) #add room to list for later collision checks
@@ -343,3 +344,16 @@ def FindPath(map):
         #Fail to find the target square, and the open list is empty. In this case, there is no path.
         #Save the path. Working backwards from the target square, go from each square to its parent square until you reach the starting square. That is your path.
     return 'Failed'
+
+def CheckConnection(room, placedRooms, map): #Returns true if disconnected, false otherwise to break the search loop
+    overlapCount = 0
+    if placedRooms == []:
+        return False
+    for x in range(room.x, room.x+room.length+1):
+        for y in range(room.y, room.y+room.height+1):
+            if map.grid[y][x].status ==2 or map.grid[y][x].status == 4:
+                overlapCount = overlapCount + 1
+            else:
+                overlapCount = 0
+            if overlapCount >= 3:
+                return False
