@@ -34,7 +34,6 @@ def CheckCollision(room, rooms, map): #true if collision, false if valid
 class Square:
     def __init__(self):
         self.status:int = 0 #0: black 1: floor door: 3 wall: 2,4,6,8
-        self.adjFloors:int = 0
 
 class Graph:
     def __init__(self, edges, vertices, adjList):
