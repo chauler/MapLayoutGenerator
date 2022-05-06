@@ -37,17 +37,17 @@ class Square:
 
 class Graph:
     def __init__(self, edges, vertices, adjList):
-        self.edges = edges
-        self.vertices = vertices
-        self.adjList = adjList
+        self.edges = edges #Generally a list of tuples
+        self.vertices = vertices #List of squares
+        self.adjList = adjList #Generally a dictionary
 
 class Node:
     parent = None
     def __init__(self, coords, parent=None):
         self.coords:tuple = coords
-        self.f = 999999
-        self.g = 999999
-        self.h = 0
+        self.f = 999999 #Combined total distance
+        self.g = 999999 #Distance from parent node
+        self.h = 0 #Estimated distance to end node
         self.parent = parent
     def __eq__(self, other):
         return self.coords == other.coords
@@ -58,7 +58,7 @@ class Map:
     roomsize = 10
     def __init__(self, size:int, **params):
         self.size = size
-        self.grid = [[Square() for x in range(size)] for y in range(size)]
+        self.grid = [[Square() for x in range(size)] for y in range(size)] #2D array of default squares
         self.rooms = []
         Map.ppi = params.get('ppi', Map.ppi)
         Map.numrooms = params.get('numrooms', Map.numrooms)
@@ -72,7 +72,7 @@ class Map:
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
 
-    def TrimGrid(self):
+    def TrimGrid(self): #Used to get rid of empty space on the sides of the generated grid
         for indexy, y in enumerate(self.grid): #grabs farthest left wall
             for indexx, x in enumerate(y):
                 if x.status > 1: #if cell is wall
@@ -107,6 +107,7 @@ class Map:
             for y in range(self.ysize):
                     if x == 0 or x == self.xsize-1 or y==0 or y==self.ysize-1 or self.grid[y][x].status == 0 or self.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
                         continue
+                    #Generate lists of vertically adjacent doorable tiles
                     if self.grid[y][x+1].status==1 and self.grid[y][x-1].status ==1: #if doorable
                         doorGroups.append(self.grid[y][x])
                     elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
@@ -117,7 +118,7 @@ class Map:
             door = random.choice(group)
             door.status = 3
 
-    def CreateGraph(self):
+    def CreateGraph(self): #Creates a graph from the Map's grid with each walkable tile as a node.
         edges = []
         vertices = []
         adjList = {}
@@ -293,9 +294,9 @@ class App(tk.Tk):
 def FindPath(map):
     #given list of 2 (x,y) for starting and ending nodes
     #given adjacency list, keys are (x,y)
-    #Modify map.nodes attribute with path
-    openList = []
-    closedList = []
+    #Modify return list with path
+    openList = [] #Unsearched nodes
+    closedList = [] #Searched nodes
     startNode = Node(map.nodes[0]) #Create nodes for our start and endpoint.
     endNode = Node(map.nodes[1])
     openList.append(startNode) #Add start to openList
@@ -318,35 +319,22 @@ def FindPath(map):
             childList.append(Node(item, currNode))
 
         for child in childList:
-            if [closedChild for closedChild in closedList if closedChild == child] != []:
+            if [closedChild for closedChild in closedList if closedChild == child] != []: #if this square has already been searched, skip
                 continue
 
             child.g = currNode.g + 1
-            child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1]))#a**2 + b**2 = c**2
+            child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1]))#manhattan distance.
             child.f = child.g + child.h
 
-            if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []:
+            if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []: #If theres a cheaper path to this node already discovered, skip
                 continue
 
             openList.append(child)
 
-
-        #for entry in map.graph.adjList[]:
-        #For each of the 8 squares adjacent to this current square:
-        #If it isn’t on the open list, add it to the open list. Make the current square the parent of this square. Record the F, G, and H costs of the square.
-        #If it is on the open list already, check to see if this path to that square is better, using G cost as the measure. 
-        #A lower G cost means that this is a better path. If so, change the parent of the square to the current square, and recalculate the G and F scores of the square. 
-        #If you are keeping your open list sorted by F score, you may need to resort the list to account for the change.
-        
-        
-        #Stop when you:
-        #Add the target square to the closed list, in which case the path has been found, or
-        #Fail to find the target square, and the open list is empty. In this case, there is no path.
-        #Save the path. Working backwards from the target square, go from each square to its parent square until you reach the starting square. That is your path.
     return 'Failed'
 
 def CheckConnection(room, placedRooms, map): #Returns true if disconnected, false otherwise to break the search loop
-    if placedRooms == []:
+    if placedRooms == []: #If this is the first room being placed, it doesn't need a connection
         return False
     for x in range(room.x, room.x+room.length+1):
         for y in range(room.y, room.y+room.height+1):
