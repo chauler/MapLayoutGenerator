@@ -2,7 +2,7 @@
 
 By Alex Tomjack
 
-To the professor: The substantial code that contains the actual usage of more complex data structures is all in dungeonRoom.py. Graphs are used in Graph, Map, and Map.CreateGraph(). Queues and graphs are used in FindPath(). Various usage of lists, matrices, and other simple data structures are scattered around.
+The substantial code that contains the actual usage of more complex data structures is all in dungeonRoom.py. Graphs are used in Graph, Map, and Map.CreateGraph(). Queues and graphs are used in FindPath(). Various usage of lists, matrices, and other simple data structures are scattered around.
 
 Created for CSCE 3110 final project. Randomly generates a layout of rooms and doors using user-provided parameters. Also allows for pathfinding between two points selected by clicking on the image.
 
