@@ -18,3 +18,16 @@ pyinstaller --onefile gen.py
 ```
 
 ## Usage
+The program begins with a randomly generated map using default parameters. To generate your own map, adjust the parameters using the sliders, and press "Generate".
+
+![image](https://user-images.githubusercontent.com/96323881/167211816-1f439c0d-697d-464a-8ec2-53afa37b2062.png)
+
+The map consists of floors (the brown tiles), doors (the red tiles), and walls (the grey tiles). 
+
+The pathfinding works by clicking clicking on two floor or door tiles. You can not select walls or empty tiles.
+
+Once the second tile is clicked, a path will be displayed:
+
+![image](https://user-images.githubusercontent.com/96323881/167212457-ef2eff7d-cb54-4853-9677-98e2ce72ddef.png)
+
+You can pathfind again by clicking another set of points.
