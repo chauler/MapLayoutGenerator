@@ -2,6 +2,8 @@
 
 By Alex Tomjack
 
+The substantial code that contains the actual usage of more complex data structures is all in dungeonRoom.py. Graphs are used in Graph, Map, and Map.CreateGraph(). Queues and graphs are used in FindPath(). Various usage of lists, matrices, and other simple data structures are scattered around.
+
 Created for CSCE 3110 final project. Randomly generates a layout of rooms and doors using user-provided parameters. Also allows for pathfinding between two points selected by clicking on the image.
 
 ## Installation
@@ -18,3 +20,16 @@ pyinstaller --onefile gen.py
 ```
 
 ## Usage
+The program begins with a randomly generated map using default parameters. To generate your own map, adjust the parameters using the sliders, and press "Generate".
+
+![image](https://user-images.githubusercontent.com/96323881/167211816-1f439c0d-697d-464a-8ec2-53afa37b2062.png)
+
+The map consists of floors (the brown tiles), doors (the red tiles), and walls (the grey tiles). 
+
+The pathfinding works by clicking clicking on two floor or door tiles. You can not select walls or empty tiles.
+
+Once the second tile is clicked, a path will be displayed:
+
+![image](https://user-images.githubusercontent.com/96323881/167212457-ef2eff7d-cb54-4853-9677-98e2ce72ddef.png)
+
+You can pathfind again by clicking another set of points.
