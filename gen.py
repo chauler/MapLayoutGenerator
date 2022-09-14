@@ -10,7 +10,7 @@ def main():
     window.resizable(False, False)
     window.img = Image.new("RGB", (10, 10))
     
-    #generate initial image with default params
+    #generate initial window with example map
     window.map, window.img = dr.GenerateMap()
     window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
     window.canvas.itemconfig('image', image = window.imgtk)

@@ -14,22 +14,6 @@ class Room:
         self.x = coords[0]
         self.y = coords[1]
 
-def CheckCollision(room, rooms, map): #true if collision, false if valid
-    if room.x + room.length >= map.size or room.y + room.height >= map.size: #checking with map bounds
-        return True
-    count=0
-    for y in range(room.y, room.y+room.height+1):
-        for x in range(room.x, room.x+room.length+1):
-            count = count+1 if map.grid[y][x].status > 1 else count
-    if count < 3 and len(rooms) != 0:
-        return True
-    for obj in rooms: #passed bounds check, checking with other rooms
-        if room is obj:
-            continue
-        elif room.x < obj.x+obj.length and room.x+room.length > obj.x and room.y < obj.y+obj.height and room.y+room.height > obj.y:
-            return True
-    return False
-
 class Square:
     def __init__(self):
         self.status:int = 0 #0: black 1: floor door: 3 wall: 2,4,6,8
@@ -202,6 +186,22 @@ def PlaceRooms(rooms, placedRooms, map):
                     else:
                         map.grid[y][x].status = 1 #make cells occupied
 
+def CheckCollision(room, rooms, map): #true if collision, false if valid
+    if room.x + room.length >= map.size or room.y + room.height >= map.size: #checking with map bounds
+        return True
+    count=0
+    for y in range(room.y, room.y+room.height+1):
+        for x in range(room.x, room.x+room.length+1):
+            count = count+1 if map.grid[y][x].status > 1 else count
+    if count < 3 and len(rooms) != 0:
+        return True
+    for obj in rooms: #passed bounds check, checking with other rooms
+        if room is obj:
+            continue
+        elif room.x < obj.x+obj.length and room.x+room.length > obj.x and room.y < obj.y+obj.height and room.y+room.height > obj.y:
+            return True
+    return False
+    
 def GenerateMap():
     random.seed()
     rooms = [] #initial roomlist
