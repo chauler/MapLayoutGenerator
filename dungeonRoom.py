@@ -6,7 +6,6 @@ from tkinter import NW, ttk
 
 class Room:
     def __init__(self, maxSize=10):
-        random.seed()
         self.length = random.randint(4,maxSize-1) #-1 because of how I calculate the points of the rectangles (x + length) with x of 0 and size of 5, shape would go 0-5, size 6
         self.height = random.randint(4,maxSize-1)
         self.x = None #no coordinates initially
@@ -262,6 +261,8 @@ class App(tk.Tk):
 
         #Window attributes
         self.title("Map Generator")
+        icon = ImageTk.PhotoImage(file = "./Assets/icon.png")
+        self.wm_iconphoto(False, icon)
 
         #Initialize widgets
         self.img:Image = None

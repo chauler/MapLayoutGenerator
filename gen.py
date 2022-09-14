@@ -1,12 +1,11 @@
-import tkinter
 import dungeonRoom as dr
-import math
 import random
-import tkinter as tk
-from tkinter import NW, ttk
 from PIL import ImageTk, Image
 
 def main():
+    random.seed()
+
+    #Initialize app
     window = dr.App()
     window.resizable(False, False)
     window.img = Image.new("RGB", (10, 10))
