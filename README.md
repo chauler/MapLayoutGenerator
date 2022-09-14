@@ -2,13 +2,11 @@
 
 By Alex Tomjack
 
-The substantial code that contains the actual usage of more complex data structures is all in dungeonRoom.py. Graphs are used in Graph, Map, and Map.CreateGraph(). Queues and graphs are used in FindPath(). Various usage of lists, matrices, and other simple data structures are scattered around.
-
-Created for CSCE 3110 final project. Randomly generates a layout of rooms and doors using user-provided parameters. Also allows for pathfinding between two points selected by clicking on the image.
+Initially created for CSCE 3110 final project. Randomly generates a layout of rooms and doors using user-provided parameters. Also allows for pathfinding between two points selected by clicking on the image.
 
 ## Installation
 The provided exe will run out of the box.
-If you want to run the script itself, Python 3.10 should first be installed, as well as the PIL library using pip:
+If you want to run the script itself, Python 3.10+ should first be installed, as well as the PIL library using pip:
 ```bash
 pip install Pillow
 ```
