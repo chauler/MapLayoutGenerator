@@ -8,7 +8,7 @@ class Room:
     def __init__(self, maxSize=10):
         self.length = random.randint(4,maxSize-1) #-1 because of how I calculate the points of the rectangles (x + length) with x of 0 and size of 5, shape would go 0-5, size 6
         self.height = random.randint(4,maxSize-1)
-        self.x = None #no coordinates initially
+        self.x = None #no coordinates until room is placed
         self.y = None
     def UpdateVertices(self, coords:list): #sets a rooms x,y coords
         self.x = coords[0]
@@ -16,14 +16,16 @@ class Room:
 
 class Square:
     def __init__(self):
-        self.status:int = 0 #0: black 1: floor door: 3 wall: 2,4,6,8
+        self.status:int = 0 #0: empty 1: floor 3: door 2,4,6,8: wall
 
+#Used in Map objects for pathfinding
 class Graph:
     def __init__(self, edges, vertices, adjList):
         self.edges = edges #Generally a list of tuples
         self.vertices = vertices #List of squares
-        self.adjList = adjList #Generally a dictionary
+        self.adjList = adjList #Dictionary
 
+#Used in pathfinding
 class Node:
     parent = None
     def __init__(self, coords, parent=None):
@@ -39,6 +41,7 @@ class Map:
     ppi = 10
     numrooms = 10
     roomsize = 10
+
     def __init__(self, size:int, **params):
         self.size = size
         self.grid = [[Square() for x in range(size)] for y in range(size)] #2D array of default squares
@@ -55,8 +58,10 @@ class Map:
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
 
-    def TrimGrid(self): #Used to get rid of empty space on the sides of the generated grid
-        for indexy, y in enumerate(self.grid): #grabs farthest left wall
+    #Used to get rid of empty space on the sides of the generated grid
+    def TrimGrid(self):
+        #Iterates entire grid, updating min and max values based on the farthest walls in each direction
+        for indexy, y in enumerate(self.grid):
             for indexx, x in enumerate(y):
                 if x.status > 1: #if cell is wall
                     self.miny = indexy if indexy < self.miny else self.miny
@@ -64,52 +69,64 @@ class Map:
                     self.minx = indexx if indexx < self.minx else self.minx
                     self.maxx = indexx if indexx > self.maxx else self.maxx
 
+        #Initialize new shrunken grid, copy values
         newGrid = [[Square() for x in range(self.minx, self.maxx+1)] for y in range(self.miny, self.maxy+1)]
         for indexy, y, in enumerate(newGrid):
             for indexx, x in enumerate(y):
                 newGrid[indexy][indexx] = self.grid[indexy+self.miny][indexx+self.minx]
+
+        #Update the map's grid and sizes
         self.grid = newGrid
         self.xsize = self.maxx-self.minx+1
         self.ysize = self.maxy-self.miny+1
 
     def GenDoors(self):
-        doorable = []
         doorGroups = []
+        doors = []
 
+        #Loop through entire grid horizontally searching for valid locations for doors.
+        #Tile is valid if it is a wall with 2 adjacent floors, indicating rooms on both sides
         for indexy, y in enumerate(self.grid):
             for indexx, x in enumerate(y):
-                if indexx == 0 or indexx == self.xsize-1 or indexy==0 or indexy==self.ysize-1 or x.status == 0 or x.status == 1: #if pointer is on the edge of the map or not a wall, skip
+                #Skip everything that isn't a wall
+                if indexx == 0 or indexx == self.xsize-1 or indexy==0 or indexy==self.ysize-1 or x.status == 0 or x.status == 1:
                     continue
+
                 #Generate lists of horizontally adjacent doorable tiles
                 if self.grid[indexy+1][indexx].status==1 and self.grid[indexy-1][indexx].status ==1: #if doorable
-                    doorGroups.append(x)
-                elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
-                    doorable.append(doorGroups)
-                    doorGroups = []
+                    doors.append(x)
+                elif doors != []: #if not doorable and list isn't empty, then that's the end of a group
+                    doorGroups.append(doors)
+                    doors = []
+
+        #Loop through entire grid vertically
         for x in range(self.xsize):
             for y in range(self.ysize):
-                    if x == 0 or x == self.xsize-1 or y==0 or y==self.ysize-1 or self.grid[y][x].status == 0 or self.grid[y][x].status == 1: #if pointer is on the edge of the map or not a wall, skip
+                    if x == 0 or x == self.xsize-1 or y==0 or y==self.ysize-1 or self.grid[y][x].status == 0 or self.grid[y][x].status == 1:
                         continue
                     #Generate lists of vertically adjacent doorable tiles
                     if self.grid[y][x+1].status==1 and self.grid[y][x-1].status ==1: #if doorable
-                        doorGroups.append(self.grid[y][x])
-                    elif doorGroups != []: #if not doorable and list isn't empty, then that's the end of a group
-                        doorable.append(doorGroups)
-                        doorGroups = []
+                        doors.append(self.grid[y][x])
+                    elif doors != []:
+                        doorGroups.append(doors)
+                        doors = []
 
-        for group in doorable:
+        #Generate 1 door from each group
+        for group in doorGroups:
             door = random.choice(group)
             door.status = 3
 
-    def CreateGraph(self): #Creates a graph from the Map's grid with each walkable tile as a node.
+    #Creates a graph from the Map's grid with each walkable tile as a node.
+    def CreateGraph(self):
         edges = []
         vertices = []
         adjList = {}
         for y in range(self.ysize):
             for x in range(self.xsize): #Iterate through tiles in relevant portion of map
-                if self.grid[y][x].status == 1 or self.grid[y][x].status == 3: #If tile is a floor or wall, meaning it is traversable, make it a node on the graph
-                    vertices.append(Node((x,y))) #Create new node and add it to vertex list
+                if self.grid[y][x].status == 1 or self.grid[y][x].status == 3: #If tile is a floor or door, meaning it is traversable, make it a node on the graph
+                    vertices.append(Node((x,y)))
                     tempadj = []
+                    #Search adjacent nodes for walkable tiles
                     if self.grid[y][x-1].status == 1 or self.grid[y][x-1].status == 3:
                         edges.append(((x,y),(x-1,y)))
                         tempadj.append((x-1, y))
@@ -122,7 +139,7 @@ class Map:
                     if self.grid[y+1][x].status == 1 or self.grid[y+1][x].status ==3:
                         edges.append(((x,y),(x,y+1)))
                         tempadj.append((x, y+1))
-                    adjList.update({(x,y) : tempadj}) #Add most recent (current) vertex and its list of edges to dictionary
+                    adjList.update({(x,y) : tempadj}) #Add vertex and its list of edges to dictionary
         self.graph = Graph(edges, vertices, adjList)
 
 def DrawPicture(map:Map):
@@ -130,32 +147,37 @@ def DrawPicture(map:Map):
     biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
     image = Image.new("RGB", (biggerDim*ppi+ppi, biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
-    #for each cell, draw 10x10 pixels
+
+    #for each cell, draw (ppi) pixels
     for y in range(map.ysize):
         for x in range(map.xsize):
-            if map.grid[y][x].status == 1:
+            if map.grid[y][x].status == 1: #Floor, draw brown
                 draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (51, 23, 12))
-            elif map.grid[y][x].status == 3:
+            elif map.grid[y][x].status == 3: #Door, draw red
                 draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (146, 41, 41))
-            elif map.grid[y][x].status > 1:
+            elif map.grid[y][x].status > 1: #Wall, draw grey
                 draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (93, 89, 97))
     return image
 
 def GenRooms(rooms):
-    for x in range(Map.numrooms): #generate list of rooms with random sizes
+    for x in range(Map.numrooms):
         rooms.append(Room(Map.roomsize))
     
+#Sum length and height of rooms, returns the bigger dimension to ensure map is big enough for all rooms
 def GetMaxDimension(rooms):
     totalLength=0
     totalHeight=0
-    for room in rooms: #get combined height and height of all rooms
+
+    for room in rooms:
         totalLength += room.length
         totalHeight += room.height
-    return totalLength if totalLength > totalHeight else totalHeight #Returns bigger so that the map will always be big enough to hold all the rooms, even in worst case of side by side placement
+
+    return totalLength if totalLength > totalHeight else totalHeight
 
 def PlaceRooms(rooms, placedRooms, map):
     coord = [map.size // 2, map.size // 2]
     dir = [[1,0],[0,1],[-1,0],[0,-1]]
+
     for i in range(10): #start by taking 10 steps from center
         while True:
             move = random.choice(dir)
@@ -166,14 +188,17 @@ def PlaceRooms(rooms, placedRooms, map):
                 coord[1] -= move[1]
             else: #breaks only if move is valid and doesnt go oob
                 break
+
     for room in rooms:
         room.UpdateVertices(coord) #place the room on a hypothetical position, then adjust position in while loop
-        while CheckCollision(room, placedRooms, map) or CheckConnection(room, placedRooms, map): #while there is a collision with border or existing rooms
+        #Loop True for invalid position, run until valid
+        while CheckCollision(room, placedRooms, map) or CheckDisconnected(room, placedRooms, map):
             move = random.choice(dir)
             coord[0] += move[0]
             coord[1] += move[1]
-            if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0: #go oob
-                coord[0] -= move[0] #undo move and try again
+            #If move takes us out of bounds, undo and loop
+            if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0:
+                coord[0] -= move[0]
                 coord[1] -= move[1]
 
             room.UpdateVertices(coord) #update with new coords, try again
@@ -222,36 +247,42 @@ def GenerateMap():
     return map, newImage
 
 def ButtonCallback(numRooms, maxRoomSize, window):
-    Map.numrooms = numRooms #Generate button pressed. Update map parameters.
+    Map.numrooms = numRooms
     Map.roomsize = maxRoomSize
+
     window.map, window.img = GenerateMap() #Generate new map and send the new data to the window.
     window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
     window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
 
 def canvasOnClick(event, window):
-    scale = window.img.width / 750 #gets the multiplier used to convert to and from original image size
+    scale = window.img.width / 750 #multiplier used to convert to and from original image size
     rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
     cell = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-    if window.map.grid[cell[1]][cell[0]].status != 1 and window.map.grid[cell[1]][cell[0]].status != 3: #Only allow clicking on floors or doors
+
+    #Only allow clicking on floors or doors
+    if window.map.grid[cell[1]][cell[0]].status != 1 and window.map.grid[cell[1]][cell[0]].status != 3:
         return
 
-    if len(window.map.nodes) >= 2: #If existing path, clear it
+    #If existing path, clear it
+    if len(window.map.nodes) >= 2: 
         for node in window.map.nodes:
             DrawOnCanvas(node, window, color=(51, 23, 12) if window.map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
         window.map.nodes = []
 
     window.map.nodes.append(cell)
-    if len(window.map.nodes) == 2: #If this was the second node clicked, find a path between the two
-        window.map.nodes = FindPath(window.map) #Adds nodes in path to nodes[]
-        for node in window.map.nodes:
-            DrawOnCanvas(node, window, color='green')
+
+    #If this was the second node clicked, find a path between the two
+    if len(window.map.nodes) == 2:
+        window.map.nodes = FindPath(window.map)
+
     for node in window.map.nodes:
         DrawOnCanvas(node, window, color="green") #Colors nodes on path
 
     window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
     window.canvas.itemconfig('image', image = window.imgtk)
 
-def DrawOnCanvas(cell:tuple, window, **params): #Takes in a (x,y) tuple, draws associated square in given color. Default color green
+#Takes in a (x,y) tuple, draws associated square in given color. Kwargs: color: (rr,gg,bb) or color keyword.
+def DrawOnCanvas(cell:tuple, window, **params):
     draw = ImageDraw.Draw(window.img)
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
 
@@ -267,50 +298,52 @@ class App(tk.Tk):
         #Initialize widgets
         self.img:Image = None
         self.imgtk:ImageTk = None
-        self.imageFrame = ttk.Frame(self)
+        self.canvasFrame = ttk.Frame(self)
         self.map = Map(0)
         self.UIFrame = ttk.Frame(self)
-        self.canvas = tk.Canvas(self.imageFrame, width=750, height=750)
-        self.canvasImage = self.canvas.create_image(0, 0, anchor=NW, tags='image')
+        self.canvas = tk.Canvas(self.canvasFrame, width=750, height=750)
+        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
         self.canvas.bind("<Button-1>", lambda event: canvasOnClick(event, self))
-        self.scaleLabel = ttk.Label(self.UIFrame, text='# of Rooms: ')
-        self.valueLabel = ttk.Label(self.UIFrame, text="10")
-        self.maxRoomSizeLabel = ttk.Label(self.UIFrame, text="Max Room Size:")
-        self.maxRoomSizeValueLabel = ttk.Label(self.UIFrame, text="10")
-        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.valueLabel.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
-        self.maxRoomSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxRoomSizeValueLabel.configure(text='{:.0f}'.format(math.floor(self.maxRoomSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), math.floor(self.maxRoomSizeScale.get()), self))
+        self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
+        self.roomNum = ttk.Label(self.UIFrame, text="10")
+        self.maxSizeText = ttk.Label(self.UIFrame, text="Max Room Size:")
+        self.maxSize = ttk.Label(self.UIFrame, text="10")
+        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
+        self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
 
-        self.roomNumScale.grid(row=2, column=0, sticky='n')
-        self.valueLabel.grid(row=1,column=0)
-        self.scaleLabel.grid(row=0, column=0)
-        self.maxRoomSizeLabel.grid(row=3,column=0)
-        self.maxRoomSizeValueLabel.grid(row=4, column=0)
-        self.maxRoomSizeScale.grid(row=5, column=0)
-        self.genButton.grid(row=6, column=0)
+        #Place widgets
         self.canvas.grid(row=0, column=0)
-        self.imageFrame.grid(row=0,column=0)
+        self.canvasFrame.grid(row=0,column=0)
+        self.roomNumText.grid(row=0, column=0)
+        self.roomNum.grid(row=1,column=0)
+        self.roomNumScale.grid(row=2, column=0, sticky='n')
+        self.maxSizeText.grid(row=3,column=0)
+        self.maxSize.grid(row=4, column=0)
+        self.maxSizeScale.grid(row=5, column=0)
+        self.genButton.grid(row=6, column=0)
         self.UIFrame.grid(row=0,column=1)
 
+#A* pathfinding, takes in a map as a parameter
 def FindPath(map):
     #given list of 2 (x,y) for starting and ending nodes
     #given adjacency list, keys are (x,y)
     #Modify return list with path
     openList = [] #Unsearched nodes
     closedList = [] #Searched nodes
-    startNode = Node(map.nodes[0]) #Create nodes for our start and endpoint.
+    startNode = Node(map.nodes[0])
     endNode = Node(map.nodes[1])
-    openList.append(startNode) #Add start to openList
+    openList.append(startNode) #Search from startNode
     while openList != []: #Loop until no nodes to search
-        #Look for the lowest F cost square on the open list. We refer to this as the current square.
-        #Switch it to the closed list.
-        openList.sort(key=lambda item: item.f) #Sort openList by f
-        currNode = openList.pop(0) #Set current node to openList node with lowest f
+        #f is estimated cost to a node + estimated cost from node to the end
+        #Sort openlist by lowest to highest f and search from the start.
+        openList.sort(key=lambda item: item.f)
+        currNode = openList.pop(0)
         closedList.append(currNode)
 
         if currNode == endNode:
             pathList = []
-            while currNode is not None: #Backtracks from currNode, adding it to the return list and going to the parent
+            while currNode is not None: #Backtracks from currNode to the start
                 pathList.append(currNode.coords)
                 currNode = currNode.parent
             return pathList
@@ -319,29 +352,38 @@ def FindPath(map):
         for item in map.graph.adjList[currNode.coords]: #Generate a new node for each edge from this node
             childList.append(Node(item, currNode))
 
+        #Calculate the costs of all the children from this node
         for child in childList:
-            if [closedChild for closedChild in closedList if closedChild == child] != []: #if this square has already been searched, skip
+            #if this square has already been searched, skip
+            if [closedChild for closedChild in closedList if closedChild == child] != []:
                 continue
 
             child.g = currNode.g + 1
-            child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1]))#manhattan distance.
+            child.h = (abs(child.coords[0] - endNode.coords[0]) + abs(child.coords[1] - endNode.coords[1])) #manhattan distance.
             child.f = child.g + child.h
 
-            if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []: #If theres a cheaper path to this node already discovered, skip
+            #If theres a cheaper path to this node already, dont add this path to the open list
+            if [openChild for openChild in openList if openChild == child and child.g >= openChild.g] != []:
                 continue
 
             openList.append(child)
 
+    #Returns if loop ended without finding a path
     return 'Failed'
 
-def CheckConnection(room, placedRooms, map): #Returns true if disconnected, false otherwise to break the search loop
+#Called from PlaceRooms(). Returns True if disconnected, continuing the search for valid location. False otherwise, causing room to be placed.
+def CheckDisconnected(room, placedRooms, map):
     if placedRooms == []: #If this is the first room being placed, it doesn't need a connection
         return False
+
+    #Scan entire room for connections
     for x in range(room.x, room.x+room.length+1):
         for y in range(room.y, room.y+room.height+1):
-            if x == room.x or x == room.x+room.length or y == room.y or y == room.y+room.height: #If on a wall
-                if x==0 or x==map.size-1 or y==0 or y==map.size-1 or x==room.x and y==room.y or x==room.x and y==room.y+room.height or x==room.x+room.length and y==room.y or x==room.x+room.length and y==room.y+room.height: #Skip if on edge of map
+            #Loop continues until it finds a single connection. If it finds one, returns True.
+            if x == room.x or x == room.x+room.length or y == room.y or y == room.y+room.height:
+                if x==0 or x==map.size-1 or y==0 or y==map.size-1 or x==room.x and y==room.y or x==room.x and y==room.y+room.height or x==room.x+room.length and y==room.y or x==room.x+room.length and y==room.y+room.height:
                     continue
+                #Room has a connection if it has a floor connection with an existing room.
                 if map.grid[y][x+1].status==1 or map.grid[y][x-1].status ==1 or map.grid[y+1][x].status==1 or map.grid[y-1][x].status ==1:
-                    return False #Room has a connection if it has a floor connection with an existing room.
+                    return False
     return True #If no wall tile is adjacent to an existing floor, room has no connection.
