@@ -3,7 +3,6 @@ import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
-import time
 
 class Room:
     def __init__(self, maxSize=10):
@@ -179,7 +178,9 @@ def PlaceRooms(rooms, placedRooms, map):
     coord = [map.size // 2, map.size // 2]
     dir = [[1,0],[0,1],[-1,0],[0,-1]]
 
-    for i in range(10): #start by taking 10 steps from center
+    #Start by taking 10 steps from center.
+    for i in range(10):
+        #Repeats until the taken step is valid.
         while True:
             move = random.choice(dir)
             coord[0] += move[0]
@@ -190,8 +191,10 @@ def PlaceRooms(rooms, placedRooms, map):
             else: #breaks only if move is valid and doesnt go oob
                 break
 
+    #Place each room individually
     for room in rooms:
-        room.UpdateVertices(coord) #place the room on a hypothetical position, then adjust position in while loop
+        #Place the room on a hypothetical position, then adjust position in while loop
+        room.UpdateVertices(coord) 
         #Loop True for invalid position, run until valid
         while CheckCollision(room, placedRooms, map) or CheckDisconnected(room, placedRooms, map):
             move = random.choice(dir)
