@@ -3,6 +3,7 @@ import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
+import UIHandling
 
 class Room:
     def __init__(self, maxSize=10):
@@ -142,6 +143,44 @@ class Map:
                     adjList.update({(x,y) : tempadj}) #Add vertex and its list of edges to dictionary
         self.graph = Graph(edges, vertices, adjList)
 
+class App(tk.Tk):
+    def __init__(self, **params):
+        super().__init__()
+
+        #Window attributes
+        self.title("Map Generator")
+        icon = ImageTk.PhotoImage(file = "./Assets/icon.png")
+        self.wm_iconphoto(False, icon)
+
+        #Initialize widgets
+        self.img:Image = None
+        self.imgtk:ImageTk = None
+        self.canvasFrame = ttk.Frame(self)
+        self.map = Map(0)
+        self.UIFrame = ttk.Frame(self)
+        self.canvas = tk.Canvas(self.canvasFrame, width=750, height=750)
+        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
+        self.canvas.bind("<Button-1>", lambda event: UIHandling.CanvasOnClick(event, self))
+        self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
+        self.roomNum = ttk.Label(self.UIFrame, text="10")
+        self.maxSizeText = ttk.Label(self.UIFrame, text="Max Room Size:")
+        self.maxSize = ttk.Label(self.UIFrame, text="10")
+        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
+        self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
+
+        #Place widgets
+        self.canvas.grid(row=0, column=0)
+        self.canvasFrame.grid(row=0,column=0)
+        self.roomNumText.grid(row=0, column=0)
+        self.roomNum.grid(row=1,column=0)
+        self.roomNumScale.grid(row=2, column=0, sticky='n')
+        self.maxSizeText.grid(row=3,column=0)
+        self.maxSize.grid(row=4, column=0)
+        self.maxSizeScale.grid(row=5, column=0)
+        self.genButton.grid(row=6, column=0)
+        self.UIFrame.grid(row=0,column=1)
+
 def DrawPicture(map:Map):
     ppi = Map.ppi
     biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
@@ -257,83 +296,10 @@ def GenerateMap():
     newImage = DrawPicture(map)
     return map, newImage
 
-def ButtonCallback(numRooms, maxRoomSize, window):
-    Map.numrooms = numRooms
-    Map.roomsize = maxRoomSize
-
-    window.map, window.img = GenerateMap() #Generate new map and send the new data to the window.
-    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
-    window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
-
-def canvasOnClick(event, window):
-    scale = window.img.width / 750 #multiplier used to convert to and from original image size
-    rawimgCoords = (event.x*scale, event.y*scale) #convert canvas coordinates (post-resize) to raw image coordinates
-    cell = (int(rawimgCoords[0]//Map.ppi), int(rawimgCoords[1]//Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
-
-    #Only allow clicking on floors or doors
-    if window.map.grid[cell[1]][cell[0]].status != 1 and window.map.grid[cell[1]][cell[0]].status != 3:
-        return
-
-    #If existing path, clear it
-    if len(window.map.nodes) >= 2: 
-        for node in window.map.nodes:
-            DrawOnCanvas(node, window, color=(51, 23, 12) if window.map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
-        window.map.nodes = []
-
-    window.map.nodes.append(cell)
-
-    #If this was the second node clicked, find a path between the two
-    if len(window.map.nodes) == 2:
-        window.map.nodes = FindPath(window.map)
-
-    for node in window.map.nodes:
-        DrawOnCanvas(node, window, color="green") #Colors nodes on path
-
-    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS)) #Save to class to avoid garbage collection
-    window.canvas.itemconfig('image', image = window.imgtk)
-
 #Takes in a (x,y) tuple, draws associated square in given color. Kwargs: color: (rr,gg,bb) or color keyword.
 def DrawOnCanvas(cell:tuple, window, **params):
     draw = ImageDraw.Draw(window.img)
     draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
-
-class App(tk.Tk):
-    def __init__(self, **params):
-        super().__init__()
-
-        #Window attributes
-        self.title("Map Generator")
-        icon = ImageTk.PhotoImage(file = "./Assets/icon.png")
-        self.wm_iconphoto(False, icon)
-
-        #Initialize widgets
-        self.img:Image = None
-        self.imgtk:ImageTk = None
-        self.canvasFrame = ttk.Frame(self)
-        self.map = Map(0)
-        self.UIFrame = ttk.Frame(self)
-        self.canvas = tk.Canvas(self.canvasFrame, width=750, height=750)
-        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
-        self.canvas.bind("<Button-1>", lambda event: canvasOnClick(event, self))
-        self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
-        self.roomNum = ttk.Label(self.UIFrame, text="10")
-        self.maxSizeText = ttk.Label(self.UIFrame, text="Max Room Size:")
-        self.maxSize = ttk.Label(self.UIFrame, text="10")
-        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
-        self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: ButtonCallback(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
-
-        #Place widgets
-        self.canvas.grid(row=0, column=0)
-        self.canvasFrame.grid(row=0,column=0)
-        self.roomNumText.grid(row=0, column=0)
-        self.roomNum.grid(row=1,column=0)
-        self.roomNumScale.grid(row=2, column=0, sticky='n')
-        self.maxSizeText.grid(row=3,column=0)
-        self.maxSize.grid(row=4, column=0)
-        self.maxSizeScale.grid(row=5, column=0)
-        self.genButton.grid(row=6, column=0)
-        self.UIFrame.grid(row=0,column=1)
 
 #A* pathfinding, takes in a map as a parameter
 def FindPath(map):
