@@ -3,6 +3,7 @@ import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
+import time
 
 class Room:
     def __init__(self, maxSize=10):
@@ -211,24 +212,31 @@ def PlaceRooms(rooms, placedRooms, map):
                     else:
                         map.grid[y][x].status = 1 #make cells occupied
 
-def CheckCollision(room, rooms, map): #true if collision, false if valid
+#Returns true if given room would collide with previously placed rooms. False otherwise.
+def CheckCollision(room, rooms, map):
     if room.x + room.length >= map.size or room.y + room.height >= map.size: #checking with map bounds
         return True
-    count=0
-    for y in range(room.y, room.y+room.height+1):
-        for x in range(room.x, room.x+room.length+1):
-            count = count+1 if map.grid[y][x].status > 1 else count
-    if count < 3 and len(rooms) != 0:
-        return True
-    for obj in rooms: #passed bounds check, checking with other rooms
+
+    #Basic 2D collision checking with existing rooms. Allow walls to overlap with each other but not with floor tiles.
+    for obj in rooms:
         if room is obj:
             continue
         elif room.x < obj.x+obj.length and room.x+room.length > obj.x and room.y < obj.y+obj.height and room.y+room.height > obj.y:
             return True
+
+    #TODO: Fix this to look for 3 *consecutive* overlapping wall tiles. 3 corners could overlap, giving no valid door location.
+    #Counts existing wall tiles overlapping with room. If >3, there's a good chance the room will have a valid door placement.
+    count=0
+    for y in range(room.y, room.y+room.height+1):
+        for x in range(room.x, room.x+room.length+1):
+            count = count+1 if map.grid[y][x].status > 1 else count
+
+    if count < 3 and len(rooms) != 0:
+        return True
+
     return False
     
 def GenerateMap():
-    random.seed()
     rooms = [] #initial roomlist
     placedRooms = [] #rooms already placed in map, this is used for collision checking
 
@@ -238,7 +246,7 @@ def GenerateMap():
 
     map = Map(5+maxDimension) #generates map big enough for the rooms + a buffer
 
-#place rooms on the map, random walk from center
+    #Room and door generation
     PlaceRooms(rooms, placedRooms, map)
     map.TrimGrid() #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     map.GenDoors()
