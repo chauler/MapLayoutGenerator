@@ -3,6 +3,7 @@ import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
+import sv_ttk
 import UIHandling
 
 class Room:
@@ -146,6 +147,7 @@ class Map:
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
+        sv_ttk.set_theme("dark")
 
         #Window attributes
         self.title("Map Generator")
@@ -167,7 +169,7 @@ class App(tk.Tk):
         self.maxSize = ttk.Label(self.UIFrame, text="10")
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
 
         #Place widgets
         self.canvas.grid(row=0, column=0)
