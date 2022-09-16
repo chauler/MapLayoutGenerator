@@ -11,8 +11,10 @@ def main():
     
     #generate initial window with example map
     window.map, window.img = dr.GenerateMap()
-    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750), Image.ANTIALIAS))
+    print((window.canvas.winfo_width(), window.canvas.winfo_height()))
+    window.imgtk = ImageTk.PhotoImage(window.img.resize((750,750)))
     window.canvas.itemconfig('image', image = window.imgtk)
+    print((window.canvas.winfo_width(), window.canvas.winfo_height()))
     window.mainloop()
 
 if __name__ == "__main__":
