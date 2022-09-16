@@ -171,9 +171,13 @@ class App(tk.Tk):
         self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
         self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), self))
 
-        #Place widgets
-        self.canvas.grid(row=0, column=0)
-        self.canvasFrame.grid(row=0,column=0)
+        #Place and configure widgets
+        self.canvas.grid(row=0, column=0, sticky='nw')
+        self.canvasFrame.grid(row=0,column=0, sticky='nw')
+        self.grid_columnconfigure(0, minsize=750, weight=1)
+        self.grid_rowconfigure(0, minsize=750, weight=1)
+        self.canvasFrame.grid_columnconfigure(0, minsize=750, weight=1)
+        self.canvasFrame.grid_rowconfigure(0, minsize=750, weight=1)
         self.roomNumText.grid(row=0, column=0)
         self.roomNum.grid(row=1,column=0)
         self.roomNumScale.grid(row=2, column=0, sticky='n')

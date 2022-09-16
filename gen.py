@@ -7,7 +7,6 @@ def main():
 
     #Initialize app
     window = dr.App()
-    window.resizable(False, False)
     window.img = Image.new("RGB", (10, 10))
     
     #generate initial window with example map
