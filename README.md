@@ -20,8 +20,7 @@ pyinstaller --onefile gen.py
 ## Usage
 The program begins with a randomly generated map using default parameters. To generate your own map, adjust the parameters using the sliders, and press "Generate".
 
-![image](https://user-images.githubusercontent.com/96323881/190702059-edf59196-7c39-4ae0-9289-15065b863d54.png)
-
+![image](https://user-images.githubusercontent.com/96323881/190702269-9efa2071-3ff6-4acb-9d55-707bd13df544.png)
 
 The map consists of floors (the brown tiles), doors (the red tiles), and walls (the grey tiles). 
 
