@@ -3,7 +3,6 @@ import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
-import sv_ttk
 import UIHandling
 
 class Room:
@@ -147,7 +146,8 @@ class Map:
 class App(tk.Tk):
     def __init__(self, **params):
         super().__init__()
-        sv_ttk.set_theme("dark")
+        self.tk.call("source", "./Assets/azure.tcl")
+        self.tk.call("set_theme", "dark")
 
         #Window attributes
         self.title("Map Generator")
