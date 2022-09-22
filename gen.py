@@ -1,6 +1,6 @@
 import dungeonRoom as dr
 import random
-from PIL import ImageTk, Image
+from PIL import Image
 
 def main():
     random.seed()

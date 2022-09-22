@@ -1,11 +1,9 @@
-from operator import index
 import random
 import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
 import UIHandling
-import time
 
 FLOOR = (51, 23, 12)
 DOOR = (146, 41, 41)
@@ -222,8 +220,6 @@ class AnimationCache:
         self.steps = []
         self.center = None
 
-
-
 def DrawPicture(map:Map):
     ppi = Map.ppi
     map.biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
@@ -420,39 +416,45 @@ def AnimateGeneration(map, window):
     #Center changed after trimming the image.
     cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
     window.img = Image.new("RGB", (map.biggerDim*Map.ppi+Map.ppi, map.biggerDim*Map.ppi+Map.ppi))
-    draw = ImageDraw.Draw(window.img)
-    #draw.rectangle((cursor[0]*Map.ppi, cursor[1]*Map.ppi, cursor[0]*Map.ppi+Map.ppi, cursor[1]*Map.ppi+Map.ppi), outline = "black", fill = 'yellow')
     placedTiles = []
 
     for room in map.rooms:
         room.x -= map.minx
         room.y -= map.miny
 
-    #TODO: INDEX OUT OF RANGE
-    for step in map.animCache.steps:
+    def AnimateHelper(cursor, window, map):
+        if map.animCache.steps == []:
+            window.genButton.state(['!disabled'])
+            return
+            
+        step = map.animCache.steps.pop(0)
         cursor = [cursor[0]+DIR[step][0], cursor[1]+DIR[step][1]]
         if cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize:
-            continue
-        #cursor = [cursor[0]+step[0], cursor[1]+step[1]]
-        #if not (cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize):
-        draw.rectangle((cursor[0]*Map.ppi, cursor[1]*Map.ppi, cursor[0]*Map.ppi+Map.ppi, cursor[1]*Map.ppi+Map.ppi), outline = "black", fill = 'yellow')
+            window.after(10, lambda: AnimateHelper(cursor, window, map))
+            return
+
+        DrawOnCanvas((cursor[0],cursor[1]), window, color= 'yellow')
+
         for room in map.rooms:
             if [room.x, room.y] == cursor:
-                for x in range(room.x, room.x+room.length+1): #for each tile in the room, update the maps grid
+                for x in range(room.x, room.x+room.length+1):
                     for y in range(room.y, room.y+room.height+1):
                         placedTiles.append([x, y])
                         if map.grid[y][x].status == 1:
                             DrawOnCanvas((x, y), window, color= COLORLIST[1])
-                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[1])
                         elif map.grid[y][x].status % 2 == 0:
                             DrawOnCanvas((x, y), window, color= COLORLIST[2])
-                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[2])
                         else:
                             DrawOnCanvas((x, y), window, color= COLORLIST[3])
-                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[3])
         window.DisplayImage()
-        window.update_idletasks()
+
         if cursor in placedTiles:
             DrawOnCanvas((cursor[0], cursor[1]), window, color= COLORLIST[map.grid[cursor[1]][cursor[0]].status])
         else:
             DrawOnCanvas((cursor[0], cursor[1]), window,  color= 'black')
+
+        if map.animCache.steps != []:
+            window.after(10, lambda: AnimateHelper(cursor, window, map))
+        else:
+            window.genButton.state(['!disabled'])
+    window.after(10, lambda: AnimateHelper(cursor, window, map))

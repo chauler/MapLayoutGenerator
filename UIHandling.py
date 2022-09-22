@@ -1,4 +1,4 @@
-from PIL import Image, ImageTk
+from PIL import ImageTk
 import dungeonRoom as dr
 
 def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
@@ -11,9 +11,11 @@ def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
     #window.img.show()
     #window.imgtk = ImageTk.PhotoImage(window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height())))
     #window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
-    window.DisplayImage()
     if dr.Map.animate:
+        window.genButton.state(["disabled"])
         dr.AnimateGeneration(window.map, window)
+    else:
+        window.DisplayImage()
 
 def CanvasOnClick(event, window):
     xscale = window.img.width / window.canvas.winfo_width() #multiplier used to convert to and from original image size
