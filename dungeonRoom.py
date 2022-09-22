@@ -1,9 +1,18 @@
+from operator import index
 import random
 import math
 from PIL import Image, ImageDraw, ImageTk
 import tkinter as tk
 from tkinter import NW, ttk
 import UIHandling
+import time
+
+FLOOR = (51, 23, 12)
+DOOR = (146, 41, 41)
+WALL = (93, 89, 97)
+EMPTY = (0, 0, 0)
+COLORLIST = [EMPTY, FLOOR, WALL, DOOR, WALL, EMPTY, WALL, EMPTY, WALL]
+DIR = [[1,0],[0,1],[-1,0],[0,-1]]
 
 class Room:
     def __init__(self, maxSize=10):
@@ -42,6 +51,7 @@ class Map:
     ppi = 10
     numrooms = 10
     roomsize = 10
+    animate = True
 
     def __init__(self, size:int, **params):
         self.size = size
@@ -58,6 +68,7 @@ class Map:
         self.ysize = 0
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
+        self.animCache = AnimationCache()
 
     #Used to get rid of empty space on the sides of the generated grid
     def TrimGrid(self):
@@ -174,7 +185,9 @@ class App(tk.Tk):
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
         self.ppiScale = ttk.Scale(self.UIFrame, from_=5, to=50, value=10, command= lambda event: self.ppi.configure(text='{:.0f}'.format(math.floor(self.ppiScale.get()))))
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), math.floor(self.ppiScale.get()), self))
+        self.animateValue = tk.IntVar()
+        self.animateButton = ttk.Checkbutton(self.UIFrame, text='Animate?', variable=self.animateValue)
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), math.floor(self.ppiScale.get()), self.animateValue.get(), self))
 
         #Place and configure widgets
         self.canvas.grid(row=0, column=0, sticky='nsew')
@@ -194,23 +207,38 @@ class App(tk.Tk):
         self.maxSize.grid(row=7, column=0)
         self.maxSizeScale.grid(row=8, column=0)
         self.genButton.grid(row=9, column=0)
+        self.animateButton.grid(row=10, column=0)
         self.UIFrame.grid(row=0,column=1)
+
+    def DisplayImage(self, resolution = None):
+        if resolution == None:
+            resolution = (self.canvas.winfo_width(), self.canvas.winfo_height())
+        
+        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1])))
+        self.canvas.itemconfig('image', image = self.imgtk)
+
+class AnimationCache:
+    def __init__(self):
+        self.steps = []
+        self.center = None
+
+
 
 def DrawPicture(map:Map):
     ppi = Map.ppi
-    biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
-    image = Image.new("RGB", (biggerDim*ppi+ppi, biggerDim*ppi+ppi))
+    map.biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
+    image = Image.new("RGB", (map.biggerDim*ppi+ppi, map.biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
 
     #for each cell, draw (ppi) pixels
     for y in range(map.ysize):
         for x in range(map.xsize):
             if map.grid[y][x].status == 1: #Floor, draw brown
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (51, 23, 12))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = FLOOR)
             elif map.grid[y][x].status == 3: #Door, draw red
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (146, 41, 41))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = DOOR)
             elif map.grid[y][x].status > 1: #Wall, draw grey
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = (93, 89, 97))
+                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = WALL)
     return image
 
 def GenRooms(rooms):
@@ -230,18 +258,22 @@ def GetMaxDimension(rooms):
 
 def PlaceRooms(rooms, placedRooms, map):
     coord = [map.size // 2, map.size // 2]
-    dir = [[1,0],[0,1],[-1,0],[0,-1]]
+    map.animCache.center = [map.size // 2, map.size // 2]
+    #dir = [[1,0],[0,1],[-1,0],[0,-1]]
 
     #Start by taking 10 steps from center.
     for i in range(10):
         #Repeats until the taken step is valid.
         while True:
-            move = random.choice(dir)
+            move = random.choice(DIR)
             coord[0] += move[0]
             coord[1] += move[1]
+            #map.animCache.steps.append((move[0],move[1]))
+            map.animCache.steps.append(DIR.index(move))
             if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0: #go oob
                 coord[0] -= move[0] #undo move and try again
                 coord[1] -= move[1]
+                map.animCache.steps.append(DIR.index([-move[0],-move[1]]))
             else: #breaks only if move is valid and doesnt go oob
                 break
 
@@ -251,13 +283,17 @@ def PlaceRooms(rooms, placedRooms, map):
         room.UpdateVertices(coord) 
         #Loop True for invalid position, run until valid
         while CheckCollision(room, placedRooms, map) or CheckDisconnected(room, placedRooms, map):
-            move = random.choice(dir)
+            move = random.choice(DIR)
             coord[0] += move[0]
             coord[1] += move[1]
+            #map.animCache.steps.append((move[0],move[1]))
+            map.animCache.steps.append(DIR.index(move))
             #If move takes us out of bounds, undo and loop
             if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0:
                 coord[0] -= move[0]
                 coord[1] -= move[1]
+                #map.animCache.steps.append((-move[0],-move[1]))
+                map.animCache.steps.append(DIR.index([-move[0],-move[1]]))
 
             room.UpdateVertices(coord) #update with new coords, try again
 
@@ -301,10 +337,10 @@ def GenerateMap():
 
     maxDimension = GetMaxDimension(rooms)
 
-    map = Map(5+maxDimension) #generates map big enough for the rooms + a buffer
+    map = Map(15+maxDimension*2) #generates map big enough for the rooms + a buffer
 
     #Room and door generation
-    PlaceRooms(rooms, placedRooms, map)
+    PlaceRooms(rooms, map.rooms, map)
     map.TrimGrid() #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
     map.GenDoors()
     map.CreateGraph()
@@ -379,3 +415,44 @@ def CheckDisconnected(room, placedRooms, map):
                 if map.grid[y][x+1].status==1 or map.grid[y][x-1].status ==1 or map.grid[y+1][x].status==1 or map.grid[y-1][x].status ==1:
                     return False
     return True #If no wall tile is adjacent to an existing floor, room has no connection.
+
+def AnimateGeneration(map, window):
+    #Center changed after trimming the image.
+    cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
+    window.img = Image.new("RGB", (map.biggerDim*Map.ppi+Map.ppi, map.biggerDim*Map.ppi+Map.ppi))
+    draw = ImageDraw.Draw(window.img)
+    #draw.rectangle((cursor[0]*Map.ppi, cursor[1]*Map.ppi, cursor[0]*Map.ppi+Map.ppi, cursor[1]*Map.ppi+Map.ppi), outline = "black", fill = 'yellow')
+    placedTiles = []
+
+    for room in map.rooms:
+        room.x -= map.minx
+        room.y -= map.miny
+
+    #TODO: INDEX OUT OF RANGE
+    for step in map.animCache.steps:
+        cursor = [cursor[0]+DIR[step][0], cursor[1]+DIR[step][1]]
+        if cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize:
+            continue
+        #cursor = [cursor[0]+step[0], cursor[1]+step[1]]
+        #if not (cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize):
+        draw.rectangle((cursor[0]*Map.ppi, cursor[1]*Map.ppi, cursor[0]*Map.ppi+Map.ppi, cursor[1]*Map.ppi+Map.ppi), outline = "black", fill = 'yellow')
+        for room in map.rooms:
+            if [room.x, room.y] == cursor:
+                for x in range(room.x, room.x+room.length+1): #for each tile in the room, update the maps grid
+                    for y in range(room.y, room.y+room.height+1):
+                        placedTiles.append([x, y])
+                        if map.grid[y][x].status == 1:
+                            DrawOnCanvas((x, y), window, color= COLORLIST[1])
+                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[1])
+                        elif map.grid[y][x].status % 2 == 0:
+                            DrawOnCanvas((x, y), window, color= COLORLIST[2])
+                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[2])
+                        else:
+                            DrawOnCanvas((x, y), window, color= COLORLIST[3])
+                            #draw.rectangle((x*Map.ppi, y*Map.ppi, x*Map.ppi+Map.ppi, y*Map.ppi+Map.ppi), outline = "black", fill = COLORLIST[3])
+        window.DisplayImage()
+        window.update_idletasks()
+        if cursor in placedTiles:
+            DrawOnCanvas((cursor[0], cursor[1]), window, color= COLORLIST[map.grid[cursor[1]][cursor[0]].status])
+        else:
+            DrawOnCanvas((cursor[0], cursor[1]), window,  color= 'black')

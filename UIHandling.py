@@ -1,15 +1,19 @@
 from PIL import Image, ImageTk
 import dungeonRoom as dr
 
-
-def ButtonOnClick(numRooms, maxRoomSize, ppi, window):
+def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
     dr.Map.numrooms = numRooms
     dr.Map.roomsize = maxRoomSize
     dr.Map.ppi = ppi
+    dr.Map.animate = animate
 
     window.map, window.img = dr.GenerateMap() #Generate new map and send the new data to the window.
-    window.imgtk = ImageTk.PhotoImage(window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height())))
-    window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
+    #window.img.show()
+    #window.imgtk = ImageTk.PhotoImage(window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height())))
+    #window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
+    window.DisplayImage()
+    if dr.Map.animate:
+        dr.AnimateGeneration(window.map, window)
 
 def CanvasOnClick(event, window):
     xscale = window.img.width / window.canvas.winfo_width() #multiplier used to convert to and from original image size
@@ -24,7 +28,7 @@ def CanvasOnClick(event, window):
     #If existing path, clear it
     if len(window.map.nodes) >= 2: 
         for node in window.map.nodes:
-            dr.DrawOnCanvas(node, window, color=(51, 23, 12) if window.map.grid[node[1]][node[0]].status == 1 else (146, 41, 41)) # Recolor as floor, else door
+            dr.DrawOnCanvas(node, window, color=dr.FLOOR if window.map.grid[node[1]][node[0]].status == 1 else dr.DOOR) # Recolor as floor, else door
         window.map.nodes = []
 
     window.map.nodes.append(cell)
