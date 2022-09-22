@@ -417,6 +417,8 @@ def AnimateGeneration(map, window):
     cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
     window.img = Image.new("RGB", (map.biggerDim*Map.ppi+Map.ppi, map.biggerDim*Map.ppi+Map.ppi))
     placedTiles = []
+    placedRooms = []
+
 
     for room in map.rooms:
         room.x -= map.minx
@@ -426,17 +428,16 @@ def AnimateGeneration(map, window):
         if map.animCache.steps == []:
             window.genButton.state(['!disabled'])
             return
-            
+
         step = map.animCache.steps.pop(0)
         cursor = [cursor[0]+DIR[step][0], cursor[1]+DIR[step][1]]
         if cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize:
             window.after(10, lambda: AnimateHelper(cursor, window, map))
             return
 
-        DrawOnCanvas((cursor[0],cursor[1]), window, color= 'yellow')
-
         for room in map.rooms:
-            if [room.x, room.y] == cursor:
+            if [room.x, room.y] == cursor and [rooms for rooms in placedRooms if rooms == room] == []:
+                placedRooms.append(room)
                 for x in range(room.x, room.x+room.length+1):
                     for y in range(room.y, room.y+room.height+1):
                         placedTiles.append([x, y])
@@ -446,6 +447,7 @@ def AnimateGeneration(map, window):
                             DrawOnCanvas((x, y), window, color= COLORLIST[2])
                         else:
                             DrawOnCanvas((x, y), window, color= COLORLIST[3])
+        DrawOnCanvas((cursor[0],cursor[1]), window, color= 'yellow')
         window.DisplayImage()
 
         if cursor in placedTiles:
