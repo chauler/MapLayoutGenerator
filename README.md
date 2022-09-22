@@ -17,6 +17,9 @@ The exe is created using pyinstaller (installed using pip) with
 pyinstaller --onefile gen.py
 ```
 
+![Map_Generator_2022-09-21_22-39-35_Trim_AdobeExpress (1)](https://user-images.githubusercontent.com/96323881/191657565-f367947a-abd5-47df-8ac2-525327b6e19a.gif)
+
+
 ## Usage
 The program begins with a randomly generated map using default parameters. To generate your own map, adjust the parameters using the sliders, and press "Generate".
 
@@ -26,7 +29,7 @@ The map consists of floors (the brown tiles), doors (the red tiles), and walls (
 
 It is also possible to play an animation showing the steps that created the map:
 
-https://user-images.githubusercontent.com/96323881/191657318-9c7da6f3-6378-4321-9ab8-c2963a48863d.mp4
+https://user-images.githubusercontent.com/96323881/191657765-e548fbb8-1fae-4340-993d-44058eb7c965.mp4
 
 The pathfinding works by clicking clicking on two floor or door tiles. You can not select walls or empty tiles.
 
