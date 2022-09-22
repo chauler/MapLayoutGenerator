@@ -24,6 +24,10 @@ The program begins with a randomly generated map using default parameters. To ge
 
 The map consists of floors (the brown tiles), doors (the red tiles), and walls (the grey tiles). 
 
+It is also possible to play an animation showing the steps that created the map:
+
+![Map_Generator_2022-09-21_22-39-35_Trim_AdobeExpress (1)](https://user-images.githubusercontent.com/96323881/191654139-60e2a0f4-5e70-4c0b-8a8c-93be85a54363.gif)
+
 The pathfinding works by clicking clicking on two floor or door tiles. You can not select walls or empty tiles.
 
 Once the second tile is clicked, a path will be displayed:
