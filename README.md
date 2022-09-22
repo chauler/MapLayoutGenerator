@@ -17,9 +17,6 @@ The exe is created using pyinstaller (installed using pip) with
 pyinstaller --onefile gen.py
 ```
 
-![Map_Generator_2022-09-21_22-39-35_Trim_AdobeExpress (1)](https://user-images.githubusercontent.com/96323881/191657565-f367947a-abd5-47df-8ac2-525327b6e19a.gif)
-
-
 ## Usage
 The program begins with a randomly generated map using default parameters. To generate your own map, adjust the parameters using the sliders, and press "Generate".
 
