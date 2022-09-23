@@ -1,9 +1,5 @@
 import random
-import math
-from PIL import Image, ImageDraw, ImageTk
-import tkinter as tk
-from tkinter import NW, ttk
-import UIHandling
+from PIL import Image, ImageDraw
 
 FLOOR = (51, 23, 12)
 DOOR = (146, 41, 41)
@@ -151,69 +147,6 @@ class Map:
                         tempadj.append((x, y+1))
                     adjList.update({(x,y) : tempadj}) #Add vertex and its list of edges to dictionary
         self.graph = Graph(edges, vertices, adjList)
-
-class App(tk.Tk):
-    def __init__(self, **params):
-        super().__init__()
-        self.tk.call("source", "./Assets/azure.tcl")
-        self.tk.call("set_theme", "dark")
-
-        #Window attributes
-        self.title("Map Generator")
-        icon = ImageTk.PhotoImage(file = "./Assets/icon.png")
-        self.wm_iconphoto(False, icon)
-
-        self.bind('<Configure>', lambda event: UIHandling.onResize(event, self))
-
-        #Initialize widgets
-        self.img:Image = None
-        self.imgtk:ImageTk = None
-        self.canvasFrame = ttk.Frame(self, width=750, height=750)
-        self.map = Map(0)
-        self.UIFrame = ttk.Frame(self)
-        self.canvas = tk.Canvas(self.canvasFrame, width= 750, height= 750, bg='#f0f0c0')
-        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
-        self.canvas.bind("<Button-1>", lambda event: UIHandling.CanvasOnClick(event, self))
-        self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
-        self.roomNum = ttk.Label(self.UIFrame, text="10")
-        self.maxSizeText = ttk.Label(self.UIFrame, text="Max Room Size:")
-        self.maxSize = ttk.Label(self.UIFrame, text="10")
-        self.ppiText = ttk.Label(self.UIFrame, text="Pixels per tile:")
-        self.ppi = ttk.Label(self.UIFrame, text="10")
-        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
-        self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
-        self.ppiScale = ttk.Scale(self.UIFrame, from_=5, to=50, value=10, command= lambda event: self.ppi.configure(text='{:.0f}'.format(math.floor(self.ppiScale.get()))))
-        self.animateValue = tk.IntVar()
-        self.animateButton = ttk.Checkbutton(self.UIFrame, text='Animate?', variable=self.animateValue)
-        self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: UIHandling.ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), math.floor(self.ppiScale.get()), self.animateValue.get(), self))
-
-        #Place and configure widgets
-        self.canvas.grid(row=0, column=0, sticky='nsew')
-        self.canvasFrame.grid(row=0,column=0, sticky='nsew')
-        self.grid_columnconfigure(0, minsize=750, weight=1)
-        self.grid_rowconfigure(0, minsize=750, weight=1)
-        self.canvasFrame.grid_columnconfigure(0, minsize=750, weight=1)
-        self.canvasFrame.grid_rowconfigure(0, minsize=750, weight=1)
-        self.canvasFrame.grid_propagate(False)
-        self.ppiText.grid(row=0, column=0)
-        self.ppi.grid(row=1, column=0)
-        self.ppiScale.grid(row=2, column=0)
-        self.roomNumText.grid(row=3, column=0)
-        self.roomNum.grid(row=4,column=0)
-        self.roomNumScale.grid(row=5, column=0, sticky='n')
-        self.maxSizeText.grid(row=6,column=0)
-        self.maxSize.grid(row=7, column=0)
-        self.maxSizeScale.grid(row=8, column=0)
-        self.genButton.grid(row=9, column=0)
-        self.animateButton.grid(row=10, column=0)
-        self.UIFrame.grid(row=0,column=1)
-
-    def DisplayImage(self, resolution = None):
-        if resolution == None:
-            resolution = (self.canvas.winfo_width(), self.canvas.winfo_height())
-        
-        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1])))
-        self.canvas.itemconfig('image', image = self.imgtk)
 
 class AnimationCache:
     def __init__(self):
@@ -411,63 +344,3 @@ def CheckDisconnected(room, placedRooms, map):
                 if map.grid[y][x+1].status==1 or map.grid[y][x-1].status ==1 or map.grid[y+1][x].status==1 or map.grid[y-1][x].status ==1:
                     return False
     return True #If no wall tile is adjacent to an existing floor, room has no connection.
-
-def AnimateGeneration(map, window):
-    #Center changed after trimming the image.
-    cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
-    window.img = Image.new("RGB", (map.biggerDim*Map.ppi+Map.ppi, map.biggerDim*Map.ppi+Map.ppi))
-    placedTiles = []
-    placedRooms = []
-
-    #Update the room origins to match the post-trim origins
-    for room in map.rooms:
-        room.x -= map.minx
-        room.y -= map.miny
-
-    #Recursive, iterates until there are no more steps left in the list.
-    def AnimateHelper(cursor, window, map):
-        #Base case, end the recursion and unlock the UI.
-        if map.animCache.steps == []:
-            window.genButton.state(['!disabled'])
-            return
-
-        #Grab the next step and move the cursor, don't draw if it's out of bounds
-        step = map.animCache.steps.pop(0)
-        cursor = [cursor[0]+DIR[step][0], cursor[1]+DIR[step][1]]
-        if cursor[0] < 0 or cursor[1] < 0 or cursor[0] >= map.xsize or cursor[1] >= map.ysize:
-            window.after(10, lambda: AnimateHelper(cursor, window, map))
-            return
-
-        #Check new cursor position to see if a room should be placed
-        #Only place a room the first time we step on its origin. This reduces drawing.
-        for room in map.rooms:
-            if [room.x, room.y] == cursor and [rooms for rooms in placedRooms if rooms == room] == []:
-                #Draw the room and log it as placed
-                placedRooms.append(room)
-                for x in range(room.x, room.x+room.length+1):
-                    for y in range(room.y, room.y+room.height+1):
-                        placedTiles.append([x, y])
-                        if map.grid[y][x].status == 1:
-                            DrawOnCanvas((x, y), window, color= COLORLIST[1])
-                        elif map.grid[y][x].status % 2 == 0:
-                            DrawOnCanvas((x, y), window, color= COLORLIST[2])
-                        else:
-                            DrawOnCanvas((x, y), window, color= COLORLIST[3])
-        #Draw the cursor, update the image with all the changes
-        DrawOnCanvas((cursor[0],cursor[1]), window, color= 'yellow')
-        window.DisplayImage()
-
-        #After image update, replace the tile that the cursor drew over
-        if cursor in placedTiles:
-            DrawOnCanvas((cursor[0], cursor[1]), window, color= COLORLIST[map.grid[cursor[1]][cursor[0]].status])
-        else:
-            DrawOnCanvas((cursor[0], cursor[1]), window,  color= 'black')
-
-        #If there is still steps to take, call the function again
-        if map.animCache.steps != []:
-            window.after(10, lambda: AnimateHelper(cursor, window, map))
-        else:
-            window.genButton.state(['!disabled'])
-    
-    #Start the animation
-    window.after(10, lambda: AnimateHelper(cursor, window, map))

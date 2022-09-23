@@ -1,4 +1,5 @@
 import dungeonRoom as dr
+import UIHandling as UI
 import random
 from PIL import Image
 
@@ -6,7 +7,7 @@ def main():
     random.seed()
 
     #Initialize app
-    window = dr.App()
+    window = UI.App()
     window.img = Image.new("RGB", (10, 10))
     
     #generate initial window with example map

@@ -1,5 +1,72 @@
-from PIL import ImageTk
+from PIL import Image, ImageTk
 import dungeonRoom as dr
+import tkinter as tk
+from tkinter import NW, ttk
+import math
+from animation import AnimateGeneration
+
+class App(tk.Tk):
+    def __init__(self, **params):
+        super().__init__()
+        self.tk.call("source", "./Assets/azure.tcl")
+        self.tk.call("set_theme", "dark")
+
+        #Window attributes
+        self.title("Map Generator")
+        icon = ImageTk.PhotoImage(file = "./Assets/icon.png")
+        self.wm_iconphoto(False, icon)
+
+        self.bind('<Configure>', lambda event: onResize(event, self))
+
+        #Initialize widgets
+        self.img:Image = None
+        self.imgtk:ImageTk = None
+        self.canvasFrame = ttk.Frame(self, width=750, height=750)
+        self.map = dr.Map(0)
+        self.UIFrame = ttk.Frame(self)
+        self.canvas = tk.Canvas(self.canvasFrame, width= 750, height= 750, bg='#f0f0c0')
+        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
+        self.canvas.bind("<Button-1>", lambda event: CanvasOnClick(event, self))
+        self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
+        self.roomNum = ttk.Label(self.UIFrame, text="10")
+        self.maxSizeText = ttk.Label(self.UIFrame, text="Max Room Size:")
+        self.maxSize = ttk.Label(self.UIFrame, text="10")
+        self.ppiText = ttk.Label(self.UIFrame, text="Pixels per tile:")
+        self.ppi = ttk.Label(self.UIFrame, text="10")
+        self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
+        self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
+        self.ppiScale = ttk.Scale(self.UIFrame, from_=5, to=50, value=10, command= lambda event: self.ppi.configure(text='{:.0f}'.format(math.floor(self.ppiScale.get()))))
+        self.animateValue = tk.IntVar()
+        self.animateButton = ttk.Checkbutton(self.UIFrame, text='Animate?', variable=self.animateValue)
+        self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), math.floor(self.ppiScale.get()), self.animateValue.get(), self))
+
+        #Place and configure widgets
+        self.canvas.grid(row=0, column=0, sticky='nsew')
+        self.canvasFrame.grid(row=0,column=0, sticky='nsew')
+        self.grid_columnconfigure(0, minsize=750, weight=1)
+        self.grid_rowconfigure(0, minsize=750, weight=1)
+        self.canvasFrame.grid_columnconfigure(0, minsize=750, weight=1)
+        self.canvasFrame.grid_rowconfigure(0, minsize=750, weight=1)
+        self.canvasFrame.grid_propagate(False)
+        self.ppiText.grid(row=0, column=0)
+        self.ppi.grid(row=1, column=0)
+        self.ppiScale.grid(row=2, column=0)
+        self.roomNumText.grid(row=3, column=0)
+        self.roomNum.grid(row=4,column=0)
+        self.roomNumScale.grid(row=5, column=0, sticky='n')
+        self.maxSizeText.grid(row=6,column=0)
+        self.maxSize.grid(row=7, column=0)
+        self.maxSizeScale.grid(row=8, column=0)
+        self.genButton.grid(row=9, column=0)
+        self.animateButton.grid(row=10, column=0)
+        self.UIFrame.grid(row=0,column=1)
+
+    def DisplayImage(self, resolution = None):
+        if resolution == None:
+            resolution = (self.canvas.winfo_width(), self.canvas.winfo_height())
+        
+        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1])))
+        self.canvas.itemconfig('image', image = self.imgtk)
 
 def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
     dr.Map.numrooms = numRooms
@@ -11,7 +78,7 @@ def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
     
     if dr.Map.animate:
         window.genButton.state(["disabled"])
-        dr.AnimateGeneration(window.map, window)
+        AnimateGeneration(window.map, window)
     else:
         window.DisplayImage()
 
