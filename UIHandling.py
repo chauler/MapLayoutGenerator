@@ -8,9 +8,7 @@ def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
     dr.Map.animate = animate
 
     window.map, window.img = dr.GenerateMap() #Generate new map and send the new data to the window.
-    #window.img.show()
-    #window.imgtk = ImageTk.PhotoImage(window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height())))
-    #window.canvas.itemconfig('image', image = window.imgtk) #Update the window's canvas with the new map image
+    
     if dr.Map.animate:
         window.genButton.state(["disabled"])
         dr.AnimateGeneration(window.map, window)
