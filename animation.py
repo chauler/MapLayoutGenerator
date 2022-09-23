@@ -1,5 +1,5 @@
 from PIL import Image
-from dungeonRoom import Map, DrawOnCanvas, COLORLIST, DIR
+from generation import Map, DrawOnCanvas, COLORLIST, DIR
 
 def AnimateGeneration(map, window):
     #Center changed after trimming the image.

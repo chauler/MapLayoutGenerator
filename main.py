@@ -1,4 +1,4 @@
-import dungeonRoom as dr
+import generation as dr
 import UIHandling as UI
 import random
 from PIL import Image

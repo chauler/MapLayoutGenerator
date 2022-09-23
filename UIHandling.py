@@ -1,5 +1,5 @@
 from PIL import Image, ImageTk
-import dungeonRoom as dr
+import generation as dr
 import tkinter as tk
 from tkinter import NW, ttk
 import math
