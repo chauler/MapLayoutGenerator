@@ -266,7 +266,7 @@ def GenerateMap():
 
     maxDimension = GetMaxDimension(rooms)
 
-    map = Map(15+maxDimension*2) #generates map big enough for the rooms + a buffer
+    map = Map(15+maxDimension) #generates map big enough for the rooms + a buffer
 
     #Room and door generation
     PlaceRooms(rooms, map.rooms, map)

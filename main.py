@@ -8,7 +8,6 @@ def main():
 
     #Initialize app
     window = UI.App()
-    window.img = Image.new("RGB", (10, 10))
     
     #generate initial window with example map
     window.map, window.img = dr.GenerateMap()
