@@ -10,11 +10,11 @@ If you want to run the script itself, Python 3.10+ should first be installed, as
 ```bash
 pip install Pillow
 ```
-Once this is finished, the program is run by running gen.py
+Once this is finished, the program is run by running main.py
 
 The exe is created using pyinstaller (installed using pip) with
 ```bash
-pyinstaller --onefile gen.py
+pyinstaller --onefile main.py
 ```
 
 ## Usage
