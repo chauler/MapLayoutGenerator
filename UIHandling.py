@@ -35,7 +35,7 @@ class App(tk.Tk):
         self.ppi = ttk.Label(self.UIFrame, text="10")
         self.roomNumScale = ttk.Scale(self.UIFrame, from_=1, to=100, value=10, command= lambda event: self.roomNum.configure(text='{:.0f}'.format(math.floor(self.roomNumScale.get()))))
         self.maxSizeScale = ttk.Scale(self.UIFrame, from_=6, to=20, value=10, command= lambda event: self.maxSize.configure(text='{:.0f}'.format(math.floor(self.maxSizeScale.get()))))
-        self.ppiScale = ttk.Scale(self.UIFrame, from_=5, to=50, value=10, command= lambda event: self.ppi.configure(text='{:.0f}'.format(math.floor(self.ppiScale.get()))))
+        self.ppiScale = ttk.Scale(self.UIFrame, from_=5, to=25, value=10, command= lambda event: self.ppi.configure(text='{:.0f}'.format(math.floor(self.ppiScale.get()))))
         self.animateValue = tk.IntVar()
         self.animateButton = ttk.Checkbutton(self.UIFrame, text='Animate?', variable=self.animateValue)
         self.genButton = ttk.Button(self.UIFrame, text='Generate', width=15, command= lambda: ButtonOnClick(math.floor(self.roomNumScale.get()), math.floor(self.maxSizeScale.get()), math.floor(self.ppiScale.get()), self.animateValue.get(), self))
