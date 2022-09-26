@@ -65,7 +65,7 @@ class App(tk.Tk):
         if resolution == None:
             resolution = (self.canvas.winfo_width(), self.canvas.winfo_height())
         
-        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1])))
+        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1]), Image.BOX))
         self.canvas.itemconfig('image', image = self.imgtk)
 
 def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):

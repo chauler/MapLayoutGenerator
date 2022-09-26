@@ -85,6 +85,7 @@ class Map:
         self.grid = newGrid
         self.xsize = self.maxx-self.minx+1
         self.ysize = self.maxy-self.miny+1
+        self.biggerDim = self.maxx-self.minx if self.maxx-self.minx > self.maxy-self.miny else self.maxy-self.miny #get the bigger dimension so that the image is always square
 
     def GenDoors(self):
         doorGroups = []
@@ -155,7 +156,6 @@ class AnimationCache:
 
 def DrawPicture(map:Map):
     ppi = Map.ppi
-    map.biggerDim = map.maxx-map.minx if map.maxx-map.minx > map.maxy-map.miny else map.maxy-map.miny #get the bigger dimension so that the image is always square
     image = Image.new("RGB", (map.biggerDim*ppi+ppi, map.biggerDim*ppi+ppi))
     draw = ImageDraw.Draw(image)
 
@@ -260,7 +260,6 @@ def CheckCollision(room, rooms, map):
     
 def GenerateMap():
     rooms = [] #initial roomlist
-    placedRooms = [] #rooms already placed in map, this is used for collision checking
 
     GenRooms(rooms)
 
