@@ -1,7 +1,7 @@
 from PIL import Image, ImageTk
 import generation as dr
 import tkinter as tk
-from tkinter import NW, ttk
+from tkinter import NW, PhotoImage, ttk
 import math
 from animation import AnimateGeneration
 
@@ -19,13 +19,13 @@ class App(tk.Tk):
         self.bind('<Configure>', lambda event: onResize(event, self))
 
         #Initialize widgets
-        self.img:Image = None
-        self.imgtk:ImageTk = None
         self.canvasFrame = ttk.Frame(self, width=750, height=750)
-        self.map = dr.Map(0)
+        self.map = dr.Map()
+        self.img:Image = self.map.DrawPicture()
+        self.imgtk:ImageTk = ImageTk.PhotoImage(self.img.resize((750, 750), Image.BOX))
         self.UIFrame = ttk.Frame(self)
         self.canvas = tk.Canvas(self.canvasFrame, width= 750, height= 750, bg='#f0f0c0')
-        self.imageDisplay = self.canvas.create_image(0, 0, anchor=NW, tags='image')
+        self.imageDisplay = self.canvas.create_image(0, 0, image=self.imgtk, anchor=NW, tags='image')
         self.canvas.bind("<Button-1>", lambda event: CanvasOnClick(event, self))
         self.roomNumText = ttk.Label(self.UIFrame, text='# of Rooms: ')
         self.roomNum = ttk.Label(self.UIFrame, text="10")
@@ -69,17 +69,12 @@ class App(tk.Tk):
         self.canvas.itemconfig('image', image = self.imgtk)
 
 def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
-    dr.Map.numrooms = numRooms
-    dr.Map.roomsize = maxRoomSize
-    dr.Map.ppi = ppi
-    dr.Map.animate = animate
-
-    window.map, window.img = dr.GenerateMap() #Generate new map and send the new data to the window.
-    
-    if dr.Map.animate:
+    window.map = dr.Map(numrooms= numRooms, roomsize= maxRoomSize, ppi= ppi, animate= animate) #Generate new map and send the new data to the window.
+    if animate:
         window.genButton.state(["disabled"])
         AnimateGeneration(window.map, window)
     else:
+        window.img = window.map.DrawPicture()
         window.DisplayImage()
 
 def CanvasOnClick(event, window):

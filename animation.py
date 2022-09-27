@@ -4,7 +4,7 @@ from generation import Map, DrawOnCanvas, COLORLIST, DIR
 def AnimateGeneration(map, window):
     #Center changed after trimming the image.
     cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
-    window.img = Image.new("RGB", (map.biggerDim*Map.ppi+Map.ppi, map.biggerDim*Map.ppi+Map.ppi))
+    window.img = Image.new("RGB", (map.biggerDim*map.ppi+map.ppi, map.biggerDim*map.ppi+map.ppi))
     window.DisplayImage()
     placedTiles = []
     placedRooms = []

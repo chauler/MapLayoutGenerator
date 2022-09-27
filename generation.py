@@ -45,27 +45,92 @@ class Map:
     ppi = 10
     numrooms = 10
     roomsize = 10
-    animate = True
+    animate = False
 
-    def __init__(self, size:int, **params):
-        self.size = size
-        self.grid = [[Square() for x in range(size)] for y in range(size)] #2D array of default squares
+    def __init__(self, **params):
+        self.ppi = params.get('ppi', Map.ppi)
+        self.numrooms = params.get('numrooms', Map.numrooms)
+        self.roomsize = params.get('roomsize', Map.roomsize)
+        self.animate = params.get('animate', Map.animate)
+
+        roomsToPlace = [] #initial roomlist
+        roomsToPlace = GenRooms(self.numrooms, self.roomsize)
+        maxDimension = GetMaxDimension(roomsToPlace)
+
+        self.size = maxDimension+15
+        self.grid = [[Square() for x in range(self.size)] for y in range(self.size)] #2D array of default squares
         self.rooms = []
-        Map.ppi = params.get('ppi', Map.ppi)
-        Map.numrooms = params.get('numrooms', Map.numrooms)
-        Map.roomsize = params.get('roomsize', Map.roomsize)
-        self.minx = self.size
-        self.maxx = 0
-        self.miny = self.size
-        self.maxy = 0
-        self.xsize = 0
-        self.ysize = 0
         self.graph = None #stored as (x,y):[(x,y),(x,y)]
         self.nodes = [] #stored as (x,y)
         self.animCache = AnimationCache()
 
+        self.PlaceRooms(roomsToPlace, self.rooms)
+        self.TrimGrid() #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
+        self.GenDoors()
+        self.CreateGraph()
+
+    @property
+    def xsize(self):
+        return self.maxx-self.minx+1
+
+    @property
+    def ysize(self):
+        return self.maxy-self.miny+1
+    
+    @property
+    def biggerDim(self):
+        return self.xsize if self.xsize > self.ysize else self.ysize
+
+    def PlaceRooms(self, rooms, placedRooms):
+        coord = [self.size // 2, self.size // 2]
+        self.animCache.center = [self.size // 2, self.size // 2]
+
+        #Start by taking 10 steps from center.
+        for i in range(10):
+            #Repeats until the taken step is valid.
+            while True:
+                move = random.choice(DIR)
+                coord[0] += move[0]
+                coord[1] += move[1]
+                self.animCache.steps.append(DIR.index(move))
+                if coord[0] >= self.size or coord[1] >= self.size or coord[0] < 0 or coord[1] < 0: #go oob
+                    coord[0] -= move[0] #undo move and try again
+                    coord[1] -= move[1]
+                    self.animCache.steps.append(DIR.index([-move[0],-move[1]]))
+                else: #breaks only if move is valid and doesnt go oob
+                    break
+        
+        #Place each room individually
+        for room in rooms:
+            #Place the room on a hypothetical position, then adjust position in while loop
+            room.UpdateVertices(coord) 
+            #Loop True for invalid position, run until valid
+            while CheckCollision(room, placedRooms, self) or CheckDisconnected(room, placedRooms, self):
+                move = random.choice(DIR)
+                coord[0] += move[0]
+                coord[1] += move[1]
+                self.animCache.steps.append(DIR.index(move))
+                #If move takes us out of bounds, undo and loop
+                if coord[0] >= self.size or coord[1] >= self.size or coord[0] < 0 or coord[1] < 0:
+                    coord[0] -= move[0]
+                    coord[1] -= move[1]
+                    self.animCache.steps.append(DIR.index([-move[0],-move[1]]))
+
+                room.UpdateVertices(coord) #update with new coords, try again
+
+            placedRooms.append(room) #add room to list for later collision checks
+            for x in range(room.x, room.x+room.length+1): #for each tile in the room, update the selfs grid
+                for y in range(room.y, room.y+room.height+1):
+                        if x == room.x or y == room.y or x == room.x+room.length or y == room.y+room.height:
+                            self.grid[y][x].status += 2 #make walls 2
+                        else:
+                            self.grid[y][x].status = 1 #make cells occupied
     #Used to get rid of empty space on the sides of the generated grid
     def TrimGrid(self):
+        self.minx = self.size
+        self.maxx = 0
+        self.miny = self.size
+        self.maxy = 0
         #Iterates entire grid, updating min and max values based on the farthest walls in each direction
         for indexy, y in enumerate(self.grid):
             for indexx, x in enumerate(y):
@@ -83,9 +148,6 @@ class Map:
 
         #Update the map's grid and sizes
         self.grid = newGrid
-        self.xsize = self.maxx-self.minx+1
-        self.ysize = self.maxy-self.miny+1
-        self.biggerDim = self.maxx-self.minx if self.maxx-self.minx > self.maxy-self.miny else self.maxy-self.miny #get the bigger dimension so that the image is always square
 
     def GenDoors(self):
         doorGroups = []
@@ -122,7 +184,6 @@ class Map:
         for group in doorGroups:
             door = random.choice(group)
             door.status = 3
-
     #Creates a graph from the Map's grid with each walkable tile as a node.
     def CreateGraph(self):
         edges = []
@@ -149,30 +210,31 @@ class Map:
                     adjList.update({(x,y) : tempadj}) #Add vertex and its list of edges to dictionary
         self.graph = Graph(edges, vertices, adjList)
 
+    def DrawPicture(self):
+        image = Image.new("RGB", (self.biggerDim*self.ppi+self.ppi, self.biggerDim*self.ppi+self.ppi))
+        draw = ImageDraw.Draw(image)
+
+        #for each cell, draw (ppi) pixels
+        for y in range(self.ysize):
+            for x in range(self.xsize):
+                if self.grid[y][x].status == 1: #Floor, draw brown
+                    draw.rectangle([x*self.ppi,y*self.ppi,(x*self.ppi)+self.ppi,(y*self.ppi)+self.ppi], outline="black", fill = FLOOR)
+                elif self.grid[y][x].status == 3: #Door, draw red
+                    draw.rectangle([x*self.ppi,y*self.ppi,(x*self.ppi)+self.ppi,(y*self.ppi)+self.ppi], outline="black", fill = DOOR)
+                elif self.grid[y][x].status > 1: #Wall, draw grey
+                    draw.rectangle([x*self.ppi,y*self.ppi,(x*self.ppi)+self.ppi,(y*self.ppi)+self.ppi], outline="black", fill = WALL)
+        return image
+
 class AnimationCache:
     def __init__(self):
         self.steps = []
         self.center = None
 
-def DrawPicture(map:Map):
-    ppi = Map.ppi
-    image = Image.new("RGB", (map.biggerDim*ppi+ppi, map.biggerDim*ppi+ppi))
-    draw = ImageDraw.Draw(image)
-
-    #for each cell, draw (ppi) pixels
-    for y in range(map.ysize):
-        for x in range(map.xsize):
-            if map.grid[y][x].status == 1: #Floor, draw brown
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = FLOOR)
-            elif map.grid[y][x].status == 3: #Door, draw red
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = DOOR)
-            elif map.grid[y][x].status > 1: #Wall, draw grey
-                draw.rectangle([x*ppi,y*ppi,(x*ppi)+ppi,(y*ppi)+ppi], outline="black", fill = WALL)
-    return image
-
-def GenRooms(rooms):
-    for x in range(Map.numrooms):
-        rooms.append(Room(Map.roomsize))
+def GenRooms(numrooms, roomsize):
+    rooms = []
+    for x in range(numrooms):
+        rooms.append(Room(roomsize))
+    return rooms
     
 #Sum length and height of rooms, returns the bigger dimension to ensure map is big enough for all rooms
 def GetMaxDimension(rooms):
@@ -184,55 +246,6 @@ def GetMaxDimension(rooms):
         totalHeight += room.height
 
     return totalLength if totalLength > totalHeight else totalHeight
-
-def PlaceRooms(rooms, placedRooms, map):
-    coord = [map.size // 2, map.size // 2]
-    map.animCache.center = [map.size // 2, map.size // 2]
-    #dir = [[1,0],[0,1],[-1,0],[0,-1]]
-
-    #Start by taking 10 steps from center.
-    for i in range(10):
-        #Repeats until the taken step is valid.
-        while True:
-            move = random.choice(DIR)
-            coord[0] += move[0]
-            coord[1] += move[1]
-            #map.animCache.steps.append((move[0],move[1]))
-            map.animCache.steps.append(DIR.index(move))
-            if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0: #go oob
-                coord[0] -= move[0] #undo move and try again
-                coord[1] -= move[1]
-                map.animCache.steps.append(DIR.index([-move[0],-move[1]]))
-            else: #breaks only if move is valid and doesnt go oob
-                break
-
-    #Place each room individually
-    for room in rooms:
-        #Place the room on a hypothetical position, then adjust position in while loop
-        room.UpdateVertices(coord) 
-        #Loop True for invalid position, run until valid
-        while CheckCollision(room, placedRooms, map) or CheckDisconnected(room, placedRooms, map):
-            move = random.choice(DIR)
-            coord[0] += move[0]
-            coord[1] += move[1]
-            #map.animCache.steps.append((move[0],move[1]))
-            map.animCache.steps.append(DIR.index(move))
-            #If move takes us out of bounds, undo and loop
-            if coord[0] >= map.size or coord[1] >= map.size or coord[0] < 0 or coord[1] < 0:
-                coord[0] -= move[0]
-                coord[1] -= move[1]
-                #map.animCache.steps.append((-move[0],-move[1]))
-                map.animCache.steps.append(DIR.index([-move[0],-move[1]]))
-
-            room.UpdateVertices(coord) #update with new coords, try again
-
-        placedRooms.append(room) #add room to list for later collision checks
-        for x in range(room.x, room.x+room.length+1): #for each tile in the room, update the maps grid
-            for y in range(room.y, room.y+room.height+1):
-                    if x == room.x or y == room.y or x == room.x+room.length or y == room.y+room.height:
-                        map.grid[y][x].status += 2 #make walls 2
-                    else:
-                        map.grid[y][x].status = 1 #make cells occupied
 
 #Returns true if given room would collide with previously placed rooms. False otherwise.
 def CheckCollision(room, rooms, map):
@@ -257,23 +270,6 @@ def CheckCollision(room, rooms, map):
         return True
 
     return False
-    
-def GenerateMap():
-    rooms = [] #initial roomlist
-
-    GenRooms(rooms)
-
-    maxDimension = GetMaxDimension(rooms)
-
-    map = Map(15+maxDimension) #generates map big enough for the rooms + a buffer
-
-    #Room and door generation
-    PlaceRooms(rooms, map.rooms, map)
-    map.TrimGrid() #grab the indices of the min and max x and y positions that aren't empty. Will use these to draw to eliminate black space around the layout
-    map.GenDoors()
-    map.CreateGraph()
-    newImage = DrawPicture(map)
-    return map, newImage
 
 #Takes in a (x,y) tuple, draws associated square in given color. Kwargs: color: (rr,gg,bb) or color keyword.
 def DrawOnCanvas(cell:tuple, window, **params):
