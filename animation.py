@@ -18,6 +18,8 @@ def AnimateGeneration(map, window):
         #Base case, end the recursion and unlock the UI.
         if map.animCache.steps == []:
             window.genButton.state(['!disabled'])
+            window.img = window.map.DrawPicture()
+            window.DisplayImage()
             return
 
         #Grab the next step and move the cursor, don't draw if it's out of bounds
@@ -53,8 +55,12 @@ def AnimateGeneration(map, window):
         else:
             DrawOnCanvas((cursor[0], cursor[1]), window,  color= 'black')
 
-        if counter % 300 == 0:
+        if counter % 150 == 0:
             refreshImage = Image.new("RGB", (map.biggerDim*map.ppi+map.ppi, map.biggerDim*map.ppi+map.ppi))
+            #for x in range(cursor[0]-10, cursor[0]+10):
+            #    for y in range(cursor[1]-10, cursor[1]+10):
+            #        if not (x >= map.xsize or y >= map.ysize or x < 0 or y < 0):
+            #            DrawOnCanvas((x, y), window, image=refreshImage, ppi=(map.ppi, map.ppi), color= COLORLIST[map.grid[y][x].status])
             for room in placedRooms:
                 for x in range(room.x, room.x+room.length+1):
                         for y in range(room.y, room.y+room.height+1):
@@ -67,6 +73,8 @@ def AnimateGeneration(map, window):
             window.after(timestep, lambda: AnimateHelper(cursor, window, map, counter))
         else:
             window.genButton.state(['!disabled'])
+            window.img = window.map.DrawPicture()
+            window.DisplayImage()
     
     #Start the animation
     window.after(timestep, lambda: AnimateHelper(cursor, window, map, counter))
