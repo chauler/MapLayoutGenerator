@@ -146,6 +146,11 @@ class Map:
             for indexx, x in enumerate(y):
                 newGrid[indexy][indexx] = self.grid[indexy+self.miny][indexx+self.minx]
 
+        #Update the room origins to match the post-trim origins
+        for room in self.rooms:
+            room.x -= self.minx
+            room.y -= self.miny
+
         #Update the map's grid and sizes
         self.grid = newGrid
 
@@ -211,7 +216,7 @@ class Map:
         self.graph = Graph(edges, vertices, adjList)
 
     def DrawPicture(self):
-        image = Image.new("RGB", (self.biggerDim*self.ppi+self.ppi, self.biggerDim*self.ppi+self.ppi))
+        image = Image.new("RGB", (self.biggerDim*self.ppi, self.biggerDim*self.ppi))
         draw = ImageDraw.Draw(image)
 
         #for each cell, draw (ppi) pixels

@@ -18,6 +18,8 @@ class App(tk.Tk):
 
         self.bind('<Configure>', lambda event: onResize(event, self))
 
+        self._scale = (1, 1)
+
         #Initialize widgets
         self.canvasFrame = ttk.Frame(self, width=750, height=750)
         self.map = dr.Map()
@@ -60,6 +62,11 @@ class App(tk.Tk):
         self.genButton.grid(row=9, column=0)
         self.animateButton.grid(row=10, column=0)
         self.UIFrame.grid(row=0,column=1)
+
+    @property
+    def scale(self):
+        self._scale =  (self.canvas.winfo_width() / self.map.biggerDim*self.map.ppi, self.canvas.winfo_height() / self.map.biggerDim*self.map.ppi)
+        return self._scale
 
     def DisplayImage(self, resolution = None):
         if resolution == None:

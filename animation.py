@@ -4,15 +4,10 @@ from generation import Map, DrawOnCanvas, COLORLIST, DIR
 def AnimateGeneration(map, window):
     #Center changed after trimming the image.
     cursor = [map.animCache.center[0] - map.minx, map.animCache.center[1] - map.miny]
-    window.img = Image.new("RGB", (map.biggerDim*map.ppi+map.ppi, map.biggerDim*map.ppi+map.ppi))
+    window.img = Image.new("RGB", (map.biggerDim*map.ppi, map.biggerDim*map.ppi))
     window.DisplayImage()
     placedTiles = []
     placedRooms = []
-
-    #Update the room origins to match the post-trim origins
-    for room in map.rooms:
-        room.x -= map.minx
-        room.y -= map.miny
 
     #Recursive, iterates until there are no more steps left in the list.
     def AnimateHelper(cursor, window, map):
