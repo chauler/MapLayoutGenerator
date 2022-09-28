@@ -216,7 +216,7 @@ class Map:
         self.graph = Graph(edges, vertices, adjList)
 
     def DrawPicture(self):
-        image = Image.new("RGB", (self.biggerDim*self.ppi, self.biggerDim*self.ppi))
+        image = Image.new("RGB", (self.biggerDim*self.ppi+self.ppi, self.biggerDim*self.ppi+self.ppi))
         draw = ImageDraw.Draw(image)
 
         #for each cell, draw (ppi) pixels
@@ -277,9 +277,10 @@ def CheckCollision(room, rooms, map):
     return False
 
 #Takes in a (x,y) tuple, draws associated square in given color. Kwargs: color: (rr,gg,bb) or color keyword.
-def DrawOnCanvas(cell:tuple, window, **params):
-    draw = ImageDraw.Draw(window.img)
-    draw.rectangle((cell[0]*Map.ppi, cell[1]*Map.ppi, cell[0]*Map.ppi+Map.ppi, cell[1]*Map.ppi+Map.ppi), outline = "black", fill = params.get('color', "green"))
+def DrawOnCanvas(cell:tuple, window,**params):
+    draw = ImageDraw.Draw(params.get("image", window.img))
+    ppi = params.get("ppi", window.imageppi)
+    draw.rectangle((cell[0]*ppi[0], cell[1]*ppi[1], cell[0]*ppi[0]+ppi[0], cell[1]*ppi[1]+ppi[1]), outline = "black", fill = params.get('color', "green"))
 
 #A* pathfinding, takes in a map as a parameter
 def FindPath(map):

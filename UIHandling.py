@@ -65,14 +65,20 @@ class App(tk.Tk):
 
     @property
     def scale(self):
-        self._scale =  (self.canvas.winfo_width() / self.map.biggerDim*self.map.ppi, self.canvas.winfo_height() / self.map.biggerDim*self.map.ppi)
+        self._scale =  (self.canvas.winfo_width() / (self.map.biggerDim*self.map.ppi+self.map.ppi), self.canvas.winfo_height() / (self.map.biggerDim*self.map.ppi+self.map.ppi))
         return self._scale
+
+    @property
+    def imageppi(self):
+        return (self.scale[0] * self.map.ppi, self.scale[1] * self.map.ppi)
 
     def DisplayImage(self, resolution = None):
         if resolution == None:
             resolution = (self.canvas.winfo_width(), self.canvas.winfo_height())
-        
-        self.imgtk = ImageTk.PhotoImage(self.img.resize((resolution[0], resolution[1]), Image.BOX))
+        if self.img.size != resolution:
+            self.img = self.img.resize((resolution[0], resolution[1]), Image.LANCZOS)
+
+        self.imgtk = ImageTk.PhotoImage(self.img)
         self.canvas.itemconfig('image', image = self.imgtk)
 
 def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
@@ -85,10 +91,7 @@ def ButtonOnClick(numRooms, maxRoomSize, ppi, animate, window):
         window.DisplayImage()
 
 def CanvasOnClick(event, window):
-    xscale = window.img.width / window.canvas.winfo_width() #multiplier used to convert to and from original image size
-    yscale = window.img.height / window.canvas.winfo_height()
-    rawimgCoords = (event.x*xscale, event.y*yscale) #convert canvas coordinates (post-resize) to raw image coordinates
-    cell = (int(rawimgCoords[0]//dr.Map.ppi), int(rawimgCoords[1]//dr.Map.ppi)) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
+    cell = (int(event.x//window.imageppi[0]), int(event.y//window.imageppi[1])) #convert image coordinates to map grid index. Integer division to always start at corner of cell even if click is from middle
 
     #Only allow clicking on floors or doors
     if window.map.grid[cell[1]][cell[0]].status != 1 and window.map.grid[cell[1]][cell[0]].status != 3:
@@ -97,7 +100,7 @@ def CanvasOnClick(event, window):
     #If existing path, clear it
     if len(window.map.nodes) >= 2: 
         for node in window.map.nodes:
-            dr.DrawOnCanvas(node, window, color=dr.FLOOR if window.map.grid[node[1]][node[0]].status == 1 else dr.DOOR) # Recolor as floor, else door
+            dr.DrawOnCanvas(node, window, color=dr.COLORLIST[window.map.grid[node[1]][node[0]].status]) # Recolor as floor, else door
         window.map.nodes = []
 
     window.map.nodes.append(cell)
@@ -114,5 +117,6 @@ def CanvasOnClick(event, window):
 
 def onResize(event, window):
     if event.widget == window.canvas:
-        window.imgtk = ImageTk.PhotoImage(window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height())))
+        window.img = window.img.resize((window.canvas.winfo_width(), window.canvas.winfo_height()), Image.LANCZOS)
+        window.imgtk = ImageTk.PhotoImage(window.img)
         window.canvas.itemconfig('image', image = window.imgtk)
