@@ -1,4 +1,4 @@
-# Dungeon Layout Generator
+# Map Layout Generator
 
 By Alex Tomjack
 
